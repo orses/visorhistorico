@@ -1,0 +1,24 @@
+# System files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies (if any in future)
+node_modules/
+__pycache__/
+
+# Local server scripts (optional to keep or ignore, keeping for now)
+# iniciar_servidor.bat
+
+# Temporary data or backups
+*.bak
+*.tmp
