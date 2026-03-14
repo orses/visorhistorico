@@ -1,4 +1,5 @@
 // ===== GESTOR DE METADATOS =====
+import { get, set } from 'idb-keyval';
 
 export default class MetadataManager {
     constructor() {
@@ -6,7 +7,13 @@ export default class MetadataManager {
         this.userDatabase = {}; // Capa 1: Base Maestra importada del JSON (Solo lectura en visor)
         this.manualEdits = {}; // Capa 2: Ediciones manuales del usuario (Persistentes)
         this.savingSuspended = false;
-        this.loadFromStorage();
+
+        // Optimización: Temporizador para guardado debounced
+        this.saveTimeout = null;
+    }
+
+    async init() {
+        await this.loadFromStorage();
     }
 
     // Suspend auto-saving to localStorage
@@ -101,6 +108,9 @@ export default class MetadataManager {
                 author: extractedAuthor,
                 _authorSource: authorSource,
                 license: extractedLicense,
+                sourceUrl: null,
+                authorUrl: null,
+                fullPath: filename,
                 secondarySubjects: [],
                 tags: []
             };
@@ -117,6 +127,9 @@ export default class MetadataManager {
             author: extractedAuthor, // Asignar autor extraído por defecto
             _authorSource: authorSource,
             license: extractedLicense, // Nuevo campo
+            sourceUrl: null,
+            authorUrl: null,
+            fullPath: filename,
             secondarySubjects: [],
             tags: [],
             conservationStatus: 'Sin clasificar', // Estado de conservación (nuevo)
@@ -396,8 +409,13 @@ export default class MetadataManager {
         this.saveToStorage();
     }
 
-    // Obtener metadatos: Fusión Dinámica de Triple Capa
+    // Obtener metadatos: Fusión Dinámica de Triple Capa con Caché
     getMetadata(filename) {
+        // Si ya está en caché y es válida, devolverla
+        if (this.metadata[filename] && this.metadata[filename]._isCacheValid) {
+            return this.metadata[filename];
+        }
+
         // CAPA 0: INFERENCIA (Base del nombre del archivo en disco)
         const inferred = this.parseFilename(filename);
 
@@ -428,11 +446,14 @@ export default class MetadataManager {
             fused._isUserMetadata = true;
         }
 
-        // Preservar datos efímeros de sesión (URLs de blobs, etc.) que están en la caché metadata
+        // Preservar datos efímeros de sesión (URLs de blobs, etc.) que están en la caché metadata antigua
         if (this.metadata[filename]) {
             fused._previewUrl = this.metadata[filename]._previewUrl || fused._previewUrl;
             fused._fileSize = this.metadata[filename]._fileSize || fused._fileSize;
         }
+
+        // Marcar caché como válida
+        fused._isCacheValid = true;
 
         // Actualizar caché volátil
         this.metadata[filename] = fused;
@@ -451,11 +472,22 @@ export default class MetadataManager {
         // Marcar explícitamente como edición de usuario
         this.manualEdits[filename]._isUserMetadata = true;
 
-        // Forzar re-calculado de la caché volátil
+        // Forzar re-calculado de la caché volátil invalidándola
+        if (this.metadata[filename]) {
+            this.metadata[filename]._isCacheValid = false;
+        }
         this.getMetadata(filename);
 
         this.saveToStorage();
         return this.metadata[filename];
+    }
+
+    // Guardar datos volátiles (como _previewUrl o _fileSize) sin ensuciar la base de datos de usuario persistente
+    setVolatileData(filename, data) {
+        if (!this.metadata[filename]) {
+            this.getMetadata(filename);
+        }
+        Object.assign(this.metadata[filename], data);
     }
 
     // Renombrar metadatos: Mueve también las ediciones manuales
@@ -502,60 +534,83 @@ export default class MetadataManager {
         this.saveToStorage();
     }
 
-    // Guardar en localStorage
+    // Guardar en IndexedDB con Debounce (Máximo rendimiento al editar)
     saveToStorage() {
         if (this.savingSuspended) return;
-        try {
-            // PERSISTIMOS SOLO LAS EDICIONES MANUALES (La capa que el usuario creó en el visor)
-            // No guardamos la caché 'metadata' completa porque se puede reconstruir fusionando.
-            // Limpiamos de campos técnicos de sesión antes de guardar.
-            const cleanManual = {};
-            for (const key in this.manualEdits) {
-                const { _previewUrl, _fileSize, ...rest } = this.manualEdits[key];
-                cleanManual[key] = rest;
+
+        if (this.saveTimeout) clearTimeout(this.saveTimeout);
+
+        this.saveTimeout = setTimeout(async () => {
+            try {
+                // PERSISTIMOS SOLO LAS EDICIONES MANUALES
+                const cleanManual = {};
+                for (const key in this.manualEdits) {
+                    const { _previewUrl, _fileSize, _isCacheValid, ...rest } = this.manualEdits[key];
+                    cleanManual[key] = rest;
+                }
+                await set('coleccion_historia_edits_manuales', cleanManual);
+                console.log('Ediciones manuales persistidas en IDB (Debounced).');
+            } catch (e) {
+                console.error('Error al guardar ediciones manuales:', e);
             }
-            localStorage.setItem('coleccion_historia_edits_manuales', JSON.stringify(cleanManual));
+        }, 1000); // 1 segundo de calma antes de escribir en disco
+    }
 
-            // Guardar Base de Datos Maestra (JSON) de forma independiente
-            localStorage.setItem('coleccion_historia_user_db', JSON.stringify(this.userDatabase));
-
-            console.log('Ediciones manuales y Base Maestra persistidas.');
+    // Guardar la Base de Datos Maestra (Solo se llama cuando cambia de verdad)
+    async saveUserDatabase() {
+        try {
+            await set('coleccion_historia_user_db', this.userDatabase);
+            console.log('Base de Datos Maestra persistida en IDB.');
         } catch (e) {
-            console.error('Error al guardar datos:', e);
+            console.error('Error al guardar la base maestra:', e);
         }
     }
 
-    // Cargar desde localStorage
-    loadFromStorage() {
+    // Cargar desde IndexedDB (con soporte legado para localStorage)
+    async loadFromStorage() {
         try {
             // 1. Cargar Ediciones Manuales (Capa Nueva)
-            const storedEdits = localStorage.getItem('coleccion_historia_edits_manuales');
-            if (storedEdits) {
-                this.manualEdits = JSON.parse(storedEdits);
+            const edits = await get('coleccion_historia_edits_manuales');
+            if (edits) {
+                this.manualEdits = edits;
             } else {
-                // MIGRACIÓN: Si no hay ediciones nuevas, intentar recuperar del almacén antiguo
-                const oldStored = localStorage.getItem('coleccion_historia_metadata');
-                if (oldStored) {
-                    const oldMetadata = JSON.parse(oldStored);
-                    console.log('Migrando datos del almacén antiguo...');
-                    for (const key in oldMetadata) {
-                        // Solo migramos si parecen datos de usuario o tienen coordenadas/notas
-                        const item = oldMetadata[key];
-                        if (item._isUserMetadata || item.coordinates || item.notes) {
-                            this.manualEdits[key] = item;
+                // MIGRACIÓN: Si no hay ediciones nuevas, intentar recuperar de localStorage
+                const storedEdits = localStorage.getItem('coleccion_historia_edits_manuales');
+                if (storedEdits) {
+                    this.manualEdits = JSON.parse(storedEdits);
+                    await set('coleccion_historia_edits_manuales', this.manualEdits);
+                } else {
+                    const oldStored = localStorage.getItem('coleccion_historia_metadata');
+                    if (oldStored) {
+                        const oldMetadata = JSON.parse(oldStored);
+                        console.log('Migrando datos del almacén antiguo...');
+                        for (const key in oldMetadata) {
+                            // Solo migramos si parecen datos de usuario o tienen coordenadas/notas
+                            const item = oldMetadata[key];
+                            if (item._isUserMetadata || item.coordinates || item.notes) {
+                                this.manualEdits[key] = item;
+                            }
                         }
+                        await set('coleccion_historia_edits_manuales', this.manualEdits);
                     }
-                    this.saveToStorage(); // Persistir en el nuevo formato
                 }
             }
 
             // 2. Cargar Base de Datos Maestra (JSON)
-            const storedDb = localStorage.getItem('coleccion_historia_user_db');
-            if (storedDb) this.userDatabase = JSON.parse(storedDb);
+            const userDb = await get('coleccion_historia_user_db');
+            if (userDb) {
+                this.userDatabase = userDb;
+            } else {
+                const storedDb = localStorage.getItem('coleccion_historia_user_db');
+                if (storedDb) {
+                    this.userDatabase = JSON.parse(storedDb);
+                    await set('coleccion_historia_user_db', this.userDatabase);
+                }
+            }
 
             console.log('Datos cargados:', Object.keys(this.manualEdits).length, 'ediciones manuales,', Object.keys(this.userDatabase).length, 'entradas maestras.');
         } catch (e) {
-            console.error('Error al cargar datos:', e);
+            console.error('Error al cargar datos IDB:', e);
             this.manualEdits = {};
             this.userDatabase = {};
         }
@@ -606,7 +661,10 @@ export default class MetadataManager {
             console.log('Datos primera entrada:', this.userDatabase[Object.keys(this.userDatabase)[0]]);
 
             // 2. Disparar sincronización inmediata con los archivos ya cargados en el visor
+            // Invalidar toda la caché para forzar re-fusión con el nuevo JSON
+            Object.values(this.metadata).forEach(m => m._isCacheValid = false);
             this.applyUserDatabaseToExisting();
+            this.saveUserDatabase(); // Guardar la DB maestra solo aquí
 
             console.log('Base de Datos Maestra actualizada e integrada.');
             return true;

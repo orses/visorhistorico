@@ -1,4 +1,11 @@
-﻿
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import * as UTIF from 'utif';
+import { registerSW } from 'virtual:pwa-register';
+
 import MetadataManager from './metadata-manager.js';
 import MapController from './map-controller.js';
 import SearchEngine from './search-engine.js';
@@ -20,17 +27,19 @@ let statsService;
 let exportService;
 
 let currentImages = []; // Master list of filenames
-let selectedImage = null;
+let selectedImagesList = []; // Array of selected filenames
+let primarySelectedImage = null; // The main focused image
 
 // --- INITIALIZATION ---
 async function init() {
     metadataManager = new MetadataManager();
+    await metadataManager.init(); // ¡Ahora es asíncrono y usa IndexedDB!
     searchEngine = new SearchEngine(metadataManager);
 
     // Map controller expects container ID
     mapController = new MapController('map');
 
-    uiManager = new UIManager(metadataManager, selectImage);
+    uiManager = new UIManager(metadataManager, handleSelectionChange);
     statsService = new StatisticsService(metadataManager);
     exportService = new ExportService(metadataManager);
 
@@ -54,6 +63,16 @@ async function init() {
             }
         });
         mapController.updateMarkers(visibleMeta);
+
+        // 3. Update Geographic Filter Graphics
+        if (filterManager.geographicFilter.activeMode === 'radius') {
+            mapController.drawRadius(filterManager.geographicFilter.filterCoords, filterManager.geographicFilter.radiusMeters);
+        } else if (filterManager.geographicFilter.activeMode === 'polygon') {
+            const poly = filterManager.geographicFilter.districts[filterManager.geographicFilter.activePolygonName];
+            mapController.drawPolygon(poly);
+        } else {
+            mapController.clearGeoFilter();
+        }
     });
 
     modalManager = new ModalManager(metadataManager, uiManager, statsService, exportService, (filename, updates) => {
@@ -84,8 +103,12 @@ async function init() {
             mapController.addOrUpdateMarker(filename, meta);
         }
 
-        refreshUI(filename);
-        uiManager.showToast('Cambios guardados', 'success');
+        // Obtener el nombre del campo afectado para optimizar el refresco
+        const firstField = Object.keys(updates)[0];
+        refreshUI(filename, firstField);
+
+        // No mostrar toast en cada pequeña edición de campo para no saturar
+        // uiManager.showToast('Cambios guardados', 'success');
     });
 
     setupGlobalListeners();
@@ -108,6 +131,15 @@ function setupGlobalListeners() {
 
         if (window.searchTimeout) clearTimeout(window.searchTimeout);
         window.searchTimeout = setTimeout(() => filterManager.applyFilters(q), 300);
+    });
+
+    document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.target.value = '';
+            filterManager.applyFilters('');
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            e.target.blur();
+        }
     });
 
     document.getElementById('clearSearchBtn')?.addEventListener('click', () => {
@@ -191,29 +223,48 @@ function setupGlobalListeners() {
     mapController.onMarkerDrag = (filename, newPos) => {
         metadataManager.updateMetadata(filename, { coordinates: { lat: newPos.lat, lng: newPos.lng } });
 
-        // Update Details Panel if this is the selected image
-        if (selectedImage === filename) {
+        // Update Details Panel if this is the primary selected image
+        if (primarySelectedImage === filename) {
             const meta = metadataManager.getMetadata(filename);
-            // We can re-render the whole panel or just the specific field. 
-            // Ideally UI Manager should expose a partial update, but re-render is safe.
-            uiManager.renderMetadataPanel(filename, meta);
+            // Si hay selección múltiple lo maneja el renderMultipanel (o pasamos)
+            if (selectedImagesList.length <= 1) {
+                uiManager.renderMetadataPanel(filename, meta);
+            }
         }
 
         uiManager.showToast('Ubicación actualizada (Arrastrar)', 'success');
     };
 
     mapController.onMapClick = (e) => {
-        if (selectedImage && e.originalEvent.ctrlKey) {
+        // Mode GeoFilter Radio
+        if (filterManager.geographicFilter.activeMode === 'radius') {
+            filterManager.geographicFilter.setActiveCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+            return; // No seleccionar imagen si estamos en modo radio
+        }
+
+        if (primarySelectedImage && e.originalEvent.ctrlKey) {
             const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
-            metadataManager.updateMetadata(selectedImage, { coordinates: pos });
-            mapController.addOrUpdateMarker(selectedImage, metadataManager.getMetadata(selectedImage));
+            
+            // Si hay uno solo, o queremos aplicar a todos los seleccionados:
+            // Por lógica, arrastrar coordenadas a todos los seleccionados es útil (Lote)
+            selectedImagesList.forEach(file => {
+                metadataManager.updateMetadata(file, { coordinates: pos });
+                mapController.addOrUpdateMarker(file, metadataManager.getMetadata(file));
+                refreshUI(file);
+            });
 
             // Si estamos filtrando por "Sin Coordenadas", al ponerle una, debe desaparecer de la lista.
             // Para eso reaplicamos filtros.
             filterManager.applyFilters();
+            
+            // Forzar repintado del panel
+            if (selectedImagesList.length > 1) {
+                uiManager.renderMultiMetadataPanel(selectedImagesList);
+            } else {
+                uiManager.renderMetadataPanel(primarySelectedImage);
+            }
 
-            refreshUI(selectedImage);
-            uiManager.showToast('Ubicación actualizada', 'success');
+            uiManager.showToast(`Ubicación asignada a ${selectedImagesList.length} imagen(es)`, 'success');
         }
     };
 
@@ -232,6 +283,22 @@ function setupGlobalListeners() {
             metadataManager.saveToStorage();
             uiManager.showToast('Cambios guardados en navegador (Ctrl+G)', 'success');
         }
+        // Alt+E: Abrir Modal de Edición
+        if (e.altKey && e.key.toLowerCase() === 'e') {
+            e.preventDefault();
+            if (primarySelectedImage) {
+                modalManager.openEditModal(primarySelectedImage);
+            } else {
+                uiManager.showToast('Selecciona una imagen primero', 'error');
+            }
+        }
+    });
+
+    // Escuchar eventos de actualización en lote disparados desde UIManager
+    window.addEventListener('metadataBatchUpdated', (e) => {
+        // Al modificar muchos metadatos a la vez, debemos de regenerar filtros
+        // porque puede que ahora pertenezcan a otros siglos, tipos, etc.
+        filterManager.applyFilters();
     });
 }
 
@@ -256,34 +323,62 @@ async function loadImagesFromDirectory() {
 
         metadataManager.suspendSave(); // Avoid 1000+ writes to localStorage
 
+        // MEMORY CLEANUP: revoke old object URLs before loading new ones
+        const allMetaKeys = Object.keys(metadataManager.getAllMetadata());
+        allMetaKeys.forEach(key => {
+            const m = metadataManager.getMetadata(key);
+            if (m._previewUrl && m._previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(m._previewUrl);
+                metadataManager.setVolatileData(key, { _previewUrl: null });
+            }
+        });
+
         currentImages = [];
         allScannedFiles = [];
+        const pendingTiffs = [];
 
         for await (const entry of dirHandle.values()) {
             if (entry.kind === 'file') {
                 allScannedFiles.push(entry.name);
 
+                // Check for JSON Metadata
+                if (entry.name.toLowerCase().endsWith('.json') &&
+                    (entry.name.includes('coleccion-historia-metadata') || entry.name === 'metadata.json')) {
+                    console.log('JSON de metadatos detectado:', entry.name);
+                    const file = await entry.getFile();
+                    const text = await file.text();
+                    metadataManager.importFromJSON(text); // Import content automatically
+                    uiManager.showToast('Metadatos importados automáticamente', 'success');
+                }
+
                 // Only images for gallery
                 if (entry.name.match(/\.(jpg|jpeg|png|webp|tif|tiff)$/i)) {
                     currentImages.push(entry.name);
 
-                    // Create preview URL (Blob) for browser access
                     const file = await entry.getFile();
-                    const previewUrl = URL.createObjectURL(file);
+                    const isTiff = /\.(tif|tiff)$/i.test(entry.name);
 
-                    // Update metadata cache with ephemeral data
-                    const meta = metadataManager.getMetadata(entry.name);
-                    metadataManager.updateMetadata(entry.name, {
-                        _previewUrl: previewUrl,
-                        _fileSize: file.size
-                    });
+                    if (isTiff) {
+                        // Defer TIFF decoding — store File for background processing
+                        pendingTiffs.push({ name: entry.name, file });
+                        metadataManager.setVolatileData(entry.name, {
+                            _isProcessing: true,
+                            _fileSize: file.size
+                        });
+                    } else {
+                        const previewUrl = URL.createObjectURL(file);
+                        metadataManager.setVolatileData(entry.name, {
+                            _previewUrl: previewUrl,
+                            _fileSize: file.size
+                        });
+                    }
                 }
             }
         }
 
-        // Pass scanned files to stats service (assuming we add a method for it next)
+        // Pass only images to stats service for consistency
         if (statsService.setAllFiles) {
-            statsService.setAllFiles(allScannedFiles);
+            statsService.setAllFiles(currentImages);
         }
 
         document.getElementById('totalCount').textContent = `${currentImages.length} catalogados`;
@@ -305,6 +400,11 @@ async function loadImagesFromDirectory() {
 
         uiManager.showToast(`Escaneados ${allScannedFiles.length} archivos | ${currentImages.length} catalogados`, 'success');
 
+        // Background TIFF decoding (non-blocking)
+        if (pendingTiffs.length > 0 && typeof UTIF !== 'undefined') {
+            decodeTiffsInBackground(pendingTiffs);
+        }
+
     } catch (err) {
         if (err.name === 'AbortError') {
             console.log('Selección de directorio cancelada por el usuario');
@@ -321,20 +421,141 @@ async function loadImagesFromDirectory() {
     }
 }
 
-function selectImage(filename) {
-    selectedImage = filename;
-    uiManager.updateSelection(filename);
-    uiManager.renderMetadataPanel(filename);
-    mapController.focusMarker(filename);
+/**
+ * Decodifica los TIFF pendientes en un Web Worker (hilo separado).
+ * Vite soporta workers como módulos ES nativamente.
+ */
+function decodeTiffsInBackground(tiffs) {
+    const worker = new Worker(new URL('./tiff-worker.js', import.meta.url), { type: 'module' });
+    let i = 0;
+    const total = tiffs.length;
+    console.log(`Iniciando decodificación de ${total} TIFF en Web Worker…`);
+
+    worker.onmessage = function (e) {
+        const { name, blob, w, h, ok, error } = e.data;
+
+        if (ok) {
+            // Memory Cleanup: Revoke old placeholder if it was a blob
+            const meta = metadataManager.getMetadata(name);
+            if (meta._previewUrl && meta._previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(meta._previewUrl);
+            }
+
+            const previewUrl = URL.createObjectURL(blob);
+            metadataManager.setVolatileData(name, { _previewUrl: previewUrl, _isProcessing: false });
+
+            // Update thumbnail in DOM
+            const card = document.querySelector(`[data-filename="${CSS.escape(name)}"]`);
+            if (card) {
+                const imgBox = card.querySelector('.card-image-box');
+                if (imgBox) {
+                    imgBox.innerHTML = `<img src="${previewUrl}" class="card-img" loading="lazy" alt="Preview">`;
+                }
+            }
+            console.log(`TIFF ${i}/${total}: ${name} (${w}×${h})`);
+        } else {
+            console.warn(`TIFF fallido: ${name}`, error);
+        }
+
+        // Send next TIFF to worker
+        sendNext();
+    };
+
+    worker.onerror = function (err) {
+        console.error('Error en tiff-worker:', err);
+        sendNext();
+    };
+
+    function sendNext() {
+        if (i >= total) {
+            worker.terminate();
+            uiManager.showToast(`${total} TIFF procesados`, 'success');
+            console.log('Decodificación TIFF completada.');
+            return;
+        }
+
+        const { name, file } = tiffs[i++];
+        file.arrayBuffer().then(buffer => {
+            worker.postMessage({ name, buffer }, [buffer]); // Transfer buffer (zero-copy)
+        }).catch(err => {
+            console.warn(`No se pudo leer: ${name}`, err);
+            sendNext();
+        });
+    }
+
+    // Start after a brief delay to let the gallery finish rendering
+    setTimeout(sendNext, 300);
 }
 
-function refreshUI(filename) {
-    if (selectedImage === filename) {
-        uiManager.renderMetadataPanel(filename);
+// MANEJADOR PRINCIPAL DE SELECCIÓN (Single y Lote)
+function handleSelectionChange(primaryFile, allSelected) {
+    primarySelectedImage = primaryFile;
+    selectedImagesList = allSelected || [];
+
+    // Si vacío
+    if (!primarySelectedImage || selectedImagesList.length === 0) {
+        uiManager.elements.metadataContent.innerHTML = '<div style="padding:15px; text-align:center; color:#9ca3af;">Selecciona una imagen para ver sus detalles</div>';
+        return;
     }
-    // Update gallery item visuals (status dot) - simplified re-render of just that item?
-    // For now, re-render filtered is safest but slow. 
-    // filterManager.applyFilters(); 
+
+    // Single vs Lote
+    if (selectedImagesList.length === 1) {
+        uiManager.renderMetadataPanel(primarySelectedImage);
+
+        // Mapa Focus
+        const meta = metadataManager.getMetadata(primarySelectedImage);
+        const hasCoords = meta.coordinates && typeof meta.coordinates.lat === 'number';
+        if (hasCoords) {
+            mapController.focusMarker(primarySelectedImage);
+        } else {
+            uiManager.showToast('Imagen sin ubicación. Ctrl + Clic en el mapa para situarla', 'normal');
+            mapController.map.panTo([40.4168, -3.7038]);
+        }
+    } else {
+        // Múltiples seleccionados
+        uiManager.renderMultiMetadataPanel(selectedImagesList);
+        uiManager.showToast(`${selectedImagesList.length} elementos seleccionados para edición en lote`, 'success');
+    }
 }
+
+// Wrapper legacy para marcadores (devuelven string simple)
+function selectImage(filename) {
+    uiManager.updateSelection([filename]);
+    // updateSelection dispara el callback handleSelectionChange internamente
+}
+
+function refreshUI(filename, fieldAffected = null) {
+    // 1. Siempre actualizar el panel de detalles si es la seleccionada, O si estamos en lote
+    if (selectedImagesList.includes(filename)) {
+        if (selectedImagesList.length > 1) {
+            uiManager.renderMultiMetadataPanel(selectedImagesList);
+        } else {
+            uiManager.renderMetadataPanel(primarySelectedImage);
+        }
+    }
+
+    // 2. Decisión inteligente: ¿Necesitamos re-filtrar todo o solo actualizar la tarjeta?
+    const filterFields = ['centuries', 'type', 'conservationStatus', 'coordinates.lat', 'coordinates.lng'];
+
+    // Si no sabemos qué cambió, o cambió un campo de filtro, re-filtramos todo
+    if (!fieldAffected || filterFields.includes(fieldAffected)) {
+        const currentSearch = document.getElementById('searchInput').value;
+        filterManager.applyFilters(currentSearch);
+    } else {
+        // Si es un campo puramente informativo (Asunto, Autor, Notas...) 
+        // solo actualizamos la miniatura visualmente para no perder el scroll ni el foco
+        uiManager.updateGalleryItem(filename);
+    }
+}
+
+// Configurar PWA Service Worker
+const updateSW = registerSW({
+    onNeedRefresh() {
+        console.log("Nueva versión de la app disponible. Actualiza para ver los cambios.");
+    },
+    onOfflineReady() {
+        console.log("Visor Histórico listo para uso offline.");
+    },
+});
 
 document.addEventListener('DOMContentLoaded', init);

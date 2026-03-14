@@ -5,22 +5,48 @@ export default class MapController {
         this.containerId = containerId;
         this.map = null;
         this.markers = {};
-        this.markerLayer = null;
+        this.markerLayer = null; // This will now be the ClusterGroup
+        this.geoFilterLayer = null;
+        this.baseLayers = {};
         this.init();
     }
 
     init() {
-        // Crear mapa centrado en Madrid
-        this.map = L.map(this.containerId).setView([40.4168, -3.7038], 13);
-
-        // Añadir capa base
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // 1. Definir capas base
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
-        }).addTo(this.map);
+        });
 
-        // Crear capa para marcadores
-        this.markerLayer = L.layerGroup().addTo(this.map);
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        });
+
+        this.baseLayers = {
+            "Mapa": osm,
+            "Satélite": satellite
+        };
+
+        // 2. Crear mapa centrado en Madrid con Mapa por defecto
+        this.map = L.map(this.containerId, {
+            center: [40.4168, -3.7038],
+            zoom: 13,
+            layers: [osm] // Por defecto mapa convencional
+        });
+
+        // 3. Añadir control de selección de capas
+        L.control.layers(this.baseLayers).addTo(this.map);
+
+        // Capas para marcadores (Clustering)
+        this.markerLayer = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        }).addTo(this.map);
+        
+        this.geoFilterLayer = L.layerGroup().addTo(this.map);
 
         // Habilitar edición de coordenadas por drag
         this.map.on('click', (e) => {
@@ -249,6 +275,38 @@ export default class MapController {
             }
         }
         return null;
+    }
+
+    // --- GEOGRAPHIC FILTER DRAWING ---
+
+    drawRadius(latlng, radius) {
+        this.geoFilterLayer.clearLayers();
+        if (!latlng) return;
+
+        L.circle(latlng, {
+            radius: radius,
+            color: 'var(--accent-primary)',
+            fillColor: 'var(--accent-primary)',
+            fillOpacity: 0.1,
+            weight: 2,
+            dashArray: '5, 5'
+        }).addTo(this.geoFilterLayer);
+    }
+
+    drawPolygon(coords) {
+        this.geoFilterLayer.clearLayers();
+        if (!coords || coords.length === 0) return;
+
+        L.polygon(coords, {
+            color: 'var(--accent-secondary)',
+            fillColor: 'var(--accent-secondary)',
+            fillOpacity: 0.2,
+            weight: 2
+        }).addTo(this.geoFilterLayer);
+    }
+
+    clearGeoFilter() {
+        this.geoFilterLayer.clearLayers();
     }
 
 }

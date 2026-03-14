@@ -1,67 +1,155 @@
-// INSTRUCCIONES: Reemplazar la función processFiles (línea 112-144) con esta versión mejorada
+/*
+Añadir los siguientes estilos al archivo CSS principal correspondiente (ej. styles.css):
 
-async function processFiles(files) {
-    // Indicador de progreso visual
-    galleryGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-            <h3 style="color: var(--gold); margin-bottom: 1rem;">Procesando imágenes...</h3>
-            <div style="background: var(--bg-secondary); border-radius: 8px; height: 40px; overflow: hidden; margin: 0 auto 1rem; max-width: 400px; border: 1px solid var(--border);">
-                <div id="progressBar" style="height: 100%; background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: var(--bg-primary); font-weight: 600;"></div>
-            </div>
-            <div id="progressText" style="color: var(--text-secondary); font-size: 0.95rem;">Iniciando...</div>
-        </div>
-    `;
-    
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    
-    let processed = 0;
-    const total = files.length;
-    
-    for (const file of files) {
-        const filename = file.name;
+.progress-container { grid-column: 1 / -1; text-align: center; padding: 3rem; }
+.progress-title { color: var(--gold); margin-bottom: 1rem; }
+.progress-track { background: var(--bg-secondary); border-radius: 8px; height: 40px; overflow: hidden; margin: 0 auto 1rem; max-width: 400px; border: 1px solid var(--border); }
+.progress-fill { height: 100%; background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: var(--bg-primary); font-weight: 600; }
+.progress-text { color: var(--text-secondary); font-size: 0.95rem; }
+.progress-success { color: #2ecc71; }
+*/
+
+class ProcesadorDeImagenes {
+    /**
+     * @param {Object} configuracion Objeto de configuración con las dependencias globales necesarias.
+     */
+    constructor(configuracion) {
+        this.contenedorGaleria = configuracion.contenedorGaleria;
+        this.gestorMetadatos = configuracion.gestorMetadatos;
+        this.diccionarioImagenes = configuracion.diccionarioImagenes;
+        this.alCompletar = configuracion.alCompletar;
+        this.loteTamano = 10;
         
-        // Actualizar progreso
-        processed++;
-        const percentage = Math.round((processed / total) * 100);
-        progressBar.style.width = percentage + '%';
-        progressBar.textContent = percentage + '%';
-        progressText.textContent = `${processed} de ${total} imágenes`;
+        this.elementosUI = this._crearInterfazProgreso();
+    }
+
+    _crearInterfazProgreso() {
+        // En lugar de innerHTML, se instancian los nodos directamente por seguridad y rendimiento
+        this.contenedorGaleria.innerHTML = '';
         
-        // Generar metadatos
-        const metadata = metadataManager.parseFilename(filename);
+        const contenedor = document.createElement('div');
+        contenedor.className = 'progress-container';
         
-        // Geolocalizar
-        if (metadata.location) {
-            const coords = metadataManager.getCoordinates(metadata.location);
-            if (coords) {
-                metadata.coordinates = coords;
+        const titulo = document.createElement('h3');
+        titulo.className = 'progress-title';
+        titulo.textContent = 'Procesando imágenes...';
+        
+        const pista = document.createElement('div');
+        pista.className = 'progress-track';
+        
+        const barra = document.createElement('div');
+        barra.id = 'progressBar';
+        barra.className = 'progress-fill';
+        
+        const texto = document.createElement('div');
+        texto.id = 'progressText';
+        texto.className = 'progress-text';
+        texto.textContent = 'Iniciando...';
+        
+        pista.appendChild(barra);
+        contenedor.appendChild(titulo);
+        contenedor.appendChild(pista);
+        contenedor.appendChild(texto);
+        
+        this.contenedorGaleria.appendChild(contenedor);
+        
+        return { barra, texto };
+    }
+
+    _actualizarProgreso(procesados, total) {
+        if (!this.elementosUI.barra || !this.elementosUI.texto) return;
+        const porcentaje = Math.round((procesados / total) * 100);
+        this.elementosUI.barra.style.width = `${porcentaje}%`;
+        this.elementosUI.barra.textContent = `${porcentaje}%`;
+        this.elementosUI.texto.textContent = `${procesados} de ${total} imágenes válidas`;
+    }
+
+    _pausaVisual() {
+        // requestAnimationFrame es más eficiente que setTimeout para sincronizar el reflow visual del navegador
+        return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    async procesar(archivos) {
+        // 1. Validación preventiva de archivos de imagen mediante su tipo Mime
+        const archivosValidos = Array.from(archivos).filter(archivo => archivo.type.startsWith('image/'));
+        const total = archivosValidos.length;
+        
+        if (total === 0) {
+            console.warn('No se han detectado archivos de imagen válidos.');
+            return;
+        }
+
+        let procesados = 0;
+        
+        for (const archivo of archivosValidos) {
+            const nombreArchivo = archivo.name;
+            
+            try {
+                const metadatos = this.gestorMetadatos.parseFilename(nombreArchivo);
+                
+                if (metadatos?.location) {
+                    const coordenadas = this.gestorMetadatos.getCoordinates(metadatos.location);
+                    if (coordenadas) metadatos.coordinates = coordenadas;
+                }
+                
+                if (metadatos) {
+                    this.gestorMetadatos.updateMetadata(nombreArchivo, metadatos);
+                }
+                
+                if (this.diccionarioImagenes[nombreArchivo]) {
+                    URL.revokeObjectURL(this.diccionarioImagenes[nombreArchivo]);
+                }
+                
+                this.diccionarioImagenes[nombreArchivo] = URL.createObjectURL(archivo);
+                
+            } catch (error) {
+                console.error(`Error procesando el archivo «${nombreArchivo}»:`, error);
+            } finally {
+                procesados++;
+                this._actualizarProgreso(procesados, total);
+                
+                if (procesados % this.loteTamano === 0) {
+                    await this._pausaVisual();
+                }
             }
         }
         
-        metadataManager.updateMetadata(filename, metadata);
+        // Finalización
+        if (this.elementosUI.texto) {
+            this.elementosUI.texto.textContent = '✓ Procesamiento completado';
+            this.elementosUI.texto.classList.add('progress-success');
+        }
         
-        // Guardar blob URL
-        imageFiles[filename] = URL.createObjectURL(file);
+        await new Promise(resolve => setTimeout(resolve, 600));
         
-        // Pausa cada 10 archivos para actualizar UI
-        if (processed % 10 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 10));
+        // 2. Inyección de dependencias para el estado global a través de un callback
+        if (typeof this.alCompletar === 'function') {
+            const clavesImagenes = Object.keys(this.gestorMetadatos.getAllMetadata());
+            this.alCompletar(clavesImagenes);
         }
     }
-    
-    // Completado
-    progressText.textContent = '✓ Completado';
-    progressText.style.color = '#2ecc71'; // verde
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Actualizar
-    currentImages = Object.keys(metadataManager.getAllMetadata());
-    filteredImages = [...currentImages];
-    
-    renderGallery(currentImages);
-    renderCenturyFilters();
-    updateMapMarkers();
-    
-    console.log(`✓ ${currentImages.length} imágenes cargadas`);
 }
+
+// INSTRUCCIONES: Reemplazar el bloque original interactuando con las variables globales mediante la nueva clase.
+// Ejemplo de uso sugerido:
+/*
+async function handleFileSelect(event) {
+    const procesador = new ProcesadorDeImagenes({
+        contenedorGaleria: galleryGrid,
+        gestorMetadatos: metadataManager,
+        diccionarioImagenes: imageFiles,
+        alCompletar: (imagenesProcesadas) => {
+            currentImages = imagenesProcesadas;
+            filteredImages = [...currentImages];
+            
+            renderGallery(currentImages);
+            renderCenturyFilters();
+            updateMapMarkers();
+            
+            console.log(`✓ ${currentImages.length} imágenes sincronizadas con éxito.`);
+        }
+    });
+
+    await procesador.procesar(event.target.files);
+}
+*/

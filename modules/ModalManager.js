@@ -199,6 +199,10 @@ export default class ModalManager {
             { id: 'conservationStatus', label: 'Estado Conservación', type: 'select', options: ['Desaparecido', 'En ruinas', 'Modificado', 'Conservado'] },
             // Centuries is array, handled as text for simplicity
             { id: 'centuries', label: 'Siglos (separados por coma)', type: 'text' },
+            { id: 'license', label: 'Licencia', type: 'text' },
+            { id: 'sourceUrl', label: 'Enlace a la fuente', type: 'text' },
+            { id: 'authorUrl', label: 'Referencia Autor', type: 'text' },
+            { id: 'fullPath', label: 'Ruta completa del archivo', type: 'text' },
             { id: 'notes', label: 'Notas', type: 'textarea', full: true }
         ];
 
@@ -280,84 +284,8 @@ export default class ModalManager {
 
     // --- STATS MODAL ---
     openStatsModal() {
-        const stats = this.statisticsService.generateStatistics();
-        let html = '';
-
-        // Helper
-        const romanToInt = (s) => {
-            if (s === 'Sin siglo') return 9999;
-            const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-            return [...s].reduce((r, c, i, a) => {
-                const v = map[c];
-                return v < map[a[i + 1]] ? r - v : r + v;
-            }, 0);
-        };
-
-        // Render sections (reused logic from original app.js)
-        // 1. Total
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Total</h3>
-                <div class="stats-number">${stats.total}</div>
-                <div class="stats-subtitle">Catalogados</div>
-            </div>
-        `;
-
-        // 2. Type
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Por Tipo de Documento</h3>
-                ${Object.entries(stats.byType).sort(([, a], [, b]) => b - a).map(([k, v]) => `
-                    <div class="stats-row"><span class="stats-label">${k}</span><span class="stats-value">${v}</span></div>
-                `).join('')}
-            </div>
-        `;
-
-        // 3. Extension
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Por Extensión</h3>
-                ${Object.entries(stats.byExtension).sort(([, a], [, b]) => b - a).map(([k, v]) => `
-                    <div class="stats-row"><span class="stats-label">${k.toUpperCase()}</span><span class="stats-value">${v}</span></div>
-                `).join('')}
-            </div>
-        `;
-
-        // 4. Century
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Por Siglo</h3>
-                ${Object.entries(stats.byCentury).sort(([a], [b]) => {
-            // Simple sort fix for consistency
-            if (a === 'Sin siglo') return 1;
-            if (b === 'Sin siglo') return -1;
-            return romanToInt(a) - romanToInt(b);
-        }).map(([k, v]) => `
-                    <div class="stats-row"><span class="stats-label">${k}</span><span class="stats-value">${v}</span></div>
-                `).join('')}
-            </div>
-        `;
-
-        // 5. Conservation
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Por Estado de Conservación</h3>
-                ${Object.entries(stats.byConservation).sort(([, a], [, b]) => b - a).map(([k, v]) => `
-                    <div class="stats-row"><span class="stats-label">${k}</span><span class="stats-value">${v}</span></div>
-                `).join('')}
-            </div>
-        `;
-
-        // 6. Coordinates
-        const coordsPercent = stats.total ? ((stats.withCoordinates / stats.total) * 100).toFixed(1) : 0;
-        html += `
-            <div class="stats-card">
-                <h3 class="stats-card-title">Por Coordenadas</h3>
-                <div class="stats-row"><span class="stats-label">Con Coordenadas</span><span class="stats-value">${stats.withCoordinates} (${coordsPercent}%)</span></div>
-                <div class="stats-row"><span class="stats-label">Sin Coordenadas</span><span class="stats-value">${stats.withoutCoordinates}</span></div>
-            </div>
-        `;
-
+        // En lugar de texto estático, ahora llamamos a la vista HTML enriquecida con gráficos 
+        const html = this.statisticsService.generateStatisticsHTML();
         this.elements.statsModalContent.innerHTML = html;
         this.elements.statsModal.classList.add('active');
     }

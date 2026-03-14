@@ -14,54 +14,50 @@ export default class SearchEngine {
     search(query) {
         if (!query) return [];
 
-        // Pre-procesamiento de operadores en español e inglés
-        // Paso 1: Unificar OR
-        let q = query.replace(/\s+O\s+/g, ' OR ');
+        // Soportar espacios como AND implícito ("A B" -> "A AND B") si no hay operadores explícitos entre palabras sueltas.
+        // Paso 1: Normalizar mayúsculas de operadores
+        let q = query.replace(/\b(y|and)\b/gi, ' AND ')
+                     .replace(/\b(o|or)\b/gi, ' OR ')
+                     .replace(/\b(no|not)\b/gi, ' NOT ');
 
-        // Paso 2: Unificar AND (Y, AND) -> espacio
-        q = q.replace(/\s+Y\s+/g, ' ').replace(/\s+AND\s+/g, ' ');
+        // Paso 2: Dividir por OR (cada grupo es una condición válida independiente)
+        const orGroups = q.split(' OR ').map(g => g.trim()).filter(Boolean);
 
-        // Paso 3: Unificar NOT (NO, NOT) -> prefijo "-"
-        // Reemplaza " NO " por " -" y " NOT " por " -"
-        // También handle al inicio del string
-        q = q.replace(/(^|\s)NO\s+/g, '$1-');
-        q = q.replace(/(^|\s)NOT\s+/g, '$1-');
-
-        const rawGroups = q.split(' OR ');
-
-        // Parsear grupos: cada grupo es un OR (al menos uno debe cumplirse)
-        // Dentro del grupo: espacios son AND, "-" es NOT
-        // Soportamos frases literales entre " " o « »
-        const parsedGroups = rawGroups.map(groupStr => {
+        // Paso 3: Parsear los términos END dentro de cada grupo OR
+        const parsedGroups = orGroups.map(groupStr => {
             const terms = [];
-            // Regex para capturar: -?"frase", -?«frase» o -?termino
-            const termRegex = /(-?"[^"]+")|(-?«[^»]+»)|(-?\S+)/g;
+            // Dividir por espacios respetando comillas ("una frase" o «una frase»)
+            const termRegex = /(NOT\s+)?"[^"]+"|(?:\bNOT\s+)?«[^»]+»|(?:\bNOT\s+)?[^\s"]+/gi;
             let match;
+            
             while ((match = termRegex.exec(groupStr)) !== null) {
-                terms.push(match[0]);
-            }
+                let token = match[0].trim();
+                if (token === 'AND') continue; // Ignorar la palabra clave AND en sí misma si quedó residual
 
-            const conditions = terms.map(term => {
                 let isNot = false;
-                let cleanTerm = term;
-
-                if (term.startsWith('-')) {
+                
+                // Evaluar si tiene prefijo NOT o "-"
+                if (token.toUpperCase().startsWith('NOT ')) {
                     isNot = true;
-                    cleanTerm = term.substring(1);
+                    token = token.substring(4).trim();
+                } else if (token.startsWith('-')) {
+                    isNot = true;
+                    token = token.substring(1).trim();
                 }
 
-                // Quitar comillas si existen al principio y al final
-                if ((cleanTerm.startsWith('"') && cleanTerm.endsWith('"')) ||
-                    (cleanTerm.startsWith('«') && cleanTerm.endsWith('»'))) {
-                    cleanTerm = cleanTerm.substring(1, cleanTerm.length - 1);
+                // Quitar comillas
+                if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith('«') && token.endsWith('»'))) {
+                    token = token.substring(1, token.length - 1);
                 }
 
-                return {
-                    term: this.normalize(cleanTerm),
-                    isNot: isNot
-                };
-            }).filter(c => c.term.length > 0);
-            return conditions;
+                if (token) {
+                    terms.push({
+                        term: this.normalize(token),
+                        isNot: isNot
+                    });
+                }
+            }
+            return terms;
         });
 
         const allMetadata = this.metadataManager.getAllMetadata();
