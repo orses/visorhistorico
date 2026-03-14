@@ -27,6 +27,7 @@ let statsService;
 let exportService;
 
 let currentImages = []; // Master list of filenames
+let filteredImages = []; // Currently filtered/visible filenames
 let selectedImagesList = []; // Array of selected filenames
 let primarySelectedImage = null; // The main focused image
 
@@ -48,6 +49,7 @@ async function init() {
     // mapFiles -> Matches context filters (Century, etc.) but ALWAYS includes valid coordinates (ignores "Sin Coordenadas" restriction)
     filterManager = new FilterManager(metadataManager, searchEngine, (galleryFiles, mapFiles) => {
         // 1. Update Gallery
+        filteredImages = galleryFiles;
         uiManager.renderGallery(galleryFiles);
 
         // 2. Update Map Markers
@@ -290,6 +292,17 @@ function setupGlobalListeners() {
                 modalManager.openEditModal(primarySelectedImage);
             } else {
                 uiManager.showToast('Selecciona una imagen primero', 'error');
+            }
+        }
+
+        // FLECHAS: Navegación por galería (si el modal está abierto)
+        if (modalManager.isImageModalOpen()) {
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                navigateGallery(1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                navigateGallery(-1);
             }
         }
     });
@@ -546,6 +559,32 @@ function refreshUI(filename, fieldAffected = null) {
         // solo actualizamos la miniatura visualmente para no perder el scroll ni el foco
         uiManager.updateGalleryItem(filename);
     }
+}
+
+function navigateGallery(direction) {
+    if (!filteredImages || filteredImages.length === 0) return;
+    
+    // El modal manager debe rastrear qué archivo tiene abierto ahora mismo
+    const currentFile = modalManager.currentImageFile;
+    if (!currentFile) return;
+
+    let idx = filteredImages.indexOf(currentFile);
+    if (idx === -1) {
+        // Si no está en la lista filtrada actual (ej. acabamos de filtrar y ya no cumple)
+        // buscamos el más próximo o simplemente cerramos/no hacemos nada.
+        return;
+    }
+
+    idx += direction;
+    // Bucle circular
+    if (idx < 0) idx = filteredImages.length - 1;
+    if (idx >= filteredImages.length) idx = 0;
+
+    const nextFile = filteredImages[idx];
+    modalManager.openImageModal(nextFile);
+    
+    // Opcional: sincronizar selección en la parrilla para que el scroll siga al modal
+    uiManager.updateSelection([nextFile]);
 }
 
 // Configurar PWA Service Worker

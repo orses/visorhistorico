@@ -89,6 +89,7 @@ export default class ModalManager {
 
     // --- IMAGE MODAL ---
     openImageModal(filename) {
+        this.currentImageFile = filename;
         const meta = this.metadataManager.getMetadata(filename);
 
         // Reset zoom state
@@ -175,7 +176,12 @@ export default class ModalManager {
 
     closeImageModal() {
         this.elements.imageModal.classList.remove('active');
+        this.currentImageFile = null;
         if (this._zoomCleanup) this._zoomCleanup();
+    }
+
+    isImageModalOpen() {
+        return this.elements.imageModal.classList.contains('active');
     }
 
     // --- EDIT MODAL ---

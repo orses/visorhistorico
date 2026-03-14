@@ -1,150 +1,61 @@
-# Gestor de Colección Histórica de Madrid
+# Visor Histórico de Madrid
 
-Aplicación web para gestionar, explorar y enriquecer la colección de imágenes históricas de Madrid.
+Aplicación web profesional para la catalogación, visualización geográfica y análisis estadístico de colecciones de imágenes históricas.
 
-## Características
+![Estado del Proyecto](https://img.shields.io/badge/Estado-Producción-success)
+![Tecnologías](https://img.shields.io/badge/Tecnologías-Vite%20%7C%20Leaflet%20%7C%20Chart.js%20%7C%20IndexedDB-blue)
 
-### 📋 Gestión de Metadatos
+## 🚀 Características Principales
 
-- **Parser automático** de nombres de archivo
-- **Editor visual completo** para cada grabado
-- **Almacenamiento local** en el navegador
-- **Exportación/importación** en JSON
+### 🗺️ Mapa Inteligente y Geo-análisis
+- **Clustering de Marcadores**: Agrupación dinámica de puntos cercanos para mejorar la legibilidad y el rendimiento.
+- **Filtros Geográficos**: Búsqueda por radio de proximidad o por distritos/polígonos predefinidos.
+- **Edición Geo-visual**: Posicionamiento mediante arrastrar y soltar con actualización en tiempo real.
 
-### 🗺️ Mapa Interactivo
+### 🔍 Motor de Búsqueda Avanzado
+- **Lógica Booleana**: Soporte para operadores `AND`, `OR`, `NOT` (y sus equivalentes en español `Y`, `O`, `NO`) para consultas complejas.
+- **Búsquedas Exactas**: Soporte para frases literales entre comillas (`"..."` o `«...»`).
 
-- **Visualización geográfica** de todos los grabados
-- **Marcadores personalizados** por siglo
-- **Coordenadas editables** por drag-and-drop
-- **Popups con preview** de imagen
+### 📊 Análisis y Estadísticas
+- **Visualización de Datos**: Gráficos interactivos generados con **Chart.js**.
+- **Distribuciones**: Análisis automático por tipo de documento y volumen cronológico por siglos.
 
-### 🔍 Búsqueda y Filtros
+### 🛠️ Herramientas de Gestión en Lote
+- **Multi-selección**: Selección de múltiples elementos mediante `Shift` o `Ctrl`.
+- **Edición Masiva**: Panel dedicado para aplicar metadatos comunes a cientos de registros simultáneamente.
 
-- **Búsqueda de texto** en todos los campos
-- **Filtros por siglo, autor, fecha**
-- **Combinación de filtros**
-- **Filtros temporales** en timeline
+### 💾 Arquitectura y Rendimiento
+- **IndexedDB**: Almacenamiento persistente de alta capacidad.
+- **Web Workers**: Decodificación de archivos TIFF pesados en segundo plano sin bloquear la interfaz.
+- **PWA (Progressive Web App)**: Capacidad de ejecución offline y acceso rápido desde el escritorio.
 
-### 🖼️ Galería
+---
 
-- **Vista de cuadrícula**
-- **Vista de lista**
-- **Visor fullscreen** de imágenes
-- **Comparación lado a lado**
+## 🛠️ Instalación y Desarrollo
 
-## Cómo usar
+Este proyecto utiliza el empaquetador moderno **Vite**.
 
-1. **Abrir la aplicación**: Abre `index.html` en tu navegador
+1. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
 
-2. **Primera vez**:
-   - La aplicación escaneará automáticamente las imágenes del directorio padre
-   - Los metadatos se generarán automáticamente desde los nombres de archivo
-   - Puedes editar y enriquecer la información de cada grabado
+2. **Iniciar servidor de desarrollo**:
+   ```bash
+   npm run dev
+   ```
 
-3. **Editar metadatos**:
-   - Haz clic en un grabado de la galería
-   - Se abrirá el panel lateral con el editor
-   - Modifica los campos deseados
-   - Haz clic en «Guardar Cambios»
+3. **Construir para producción**:
+   ```bash
+   npm run build
+   ```
 
-4. **Geolocalizar**:
-   - Las ubicaciones conocidas se geolocalizan automáticamente
-   - Puedes ajustar la posición arrastrando el marcador en el mapa
-   - O editar las coordenadas manualmente en el formulario
+## 📖 Manual de Usuario Rápido
 
-5. **Buscar y filtrar**:
-   - Usa la barra de búsqueda para texto libre
-   - Haz clic en «Filtros avanzados» para criterios específicos
-   - Usa los filtros de siglo en el timeline
+1. **Carga de Datos**: Haz clic en el botón «Cargar Directorio» y selecciona tu carpeta de imágenes.
+2. **Navegación**: Usa las flechas del teclado (⬅️ / ➡️) para moverte entre fotos en el visor a pantalla completa.
+3. **Guardado**: Los cambios se guardan automáticamente en la base de datos local (IndexedDB). Usa `Ctrl+G` para forzar un guardado o exportar a JSON.
 
-6. **Exportar/Importar**:
-   - **Exportar**: Botón «Exportar» descarga un JSON con todos los metadatos
-   - **Importar**: Botón «Importar» carga metadatos desde un JSON previo
+## 📄 Licencia
+Este proyecto se distribuye para uso en investigación histórica y archivística.
 
-## Estructura de Datos
-
-Los metadatos se almacenan en formato JSON con la siguiente estructura:
-
-```json
-{
-  "nombre-archivo.jpg": {
-    "filename": "nombre-archivo.jpg",
-    "mainSubject": "Abundancia, fuente de la",
-    "location": "Cebada, plaza de la de",
-    "dateRange": {
-      "start": 1624,
-      "end": 1840
-    },
-    "centuries": ["XVII", "XVIII", "XIX"],
-    "author": "Meunier, Luis",
-    "coordinates": {
-      "lat": 40.4089,
-      "lng": -3.7081
-    },
-    "tags": ["fuente", "plaza"],
-    "notes": "Notas adicionales..."
-  }
-}
-```
-
-## Tecnologías Utilizadas
-
-- **HTML5/CSS3**: Estructura y diseño
-- **JavaScript (Vanilla)**: Lógica de la aplicación
-- **Leaflet.js**: Mapas interactivos
-- **localStorage**: Almacenamiento local de metadatos
-
-## Ubicaciones Predefinidas
-
-El sistema reconoce automáticamente estas ubicaciones históricas de Madrid:
-
-- Sol, puerta del
-- Mayor, plaza
-- Palacio Real
-- Cebada, plaza de la de
-- Alcalá, puerta de
-- Toledo, puerta de
-- Prado
-- Retiro
-- Oriente, plaza de
-- España, plaza de
-- Cibeles, plaza de
-
-Cualquier otra ubicación se geocodificará al centro de Madrid por defecto.
-
-## Notas Importantes
-
-- Los metadatos se guardan en el navegador (localStorage)
-- Usa la función de **exportar** regularmente para crear backups
-- Las imágenes no se modifican nunca, solo sus metadatos
-- Se recomienda usar navegadores modernos (Chrome, Firefox, Edge)
-
-## Atajos de Teclado
-
-- **Doble clic** en grabado: Abrir visor fullscreen
-- **ESC**: Cerrar visor/modales
-- **Click** en mapa: Seleccionar ubicación para nuevo grabado
-
-## Ejecución recomendada en Windows 11
-
-Desde la refactorización a módulos ES6 (`app.js` + imports), la aplicación
-debe ejecutarse desde un servidor HTTP (no con `file://index.html`), para
-evitar errores de CORS y de carga de módulos.
-
-### Opción sencilla con Python
-
-1. Instala Python 3.x desde <https://www.python.org/downloads/windows/>
-2. Crea un archivo `server.bat` en la carpeta del proyecto con este contenido:
-
-```bat
-@echo off
-cd /d "%~dp0"
-python -m http.server 8000
-```
-
-3. Haz doble clic en `server.bat`.
-4. Abre en el navegador: `http://localhost:8000/index.html`.
-
-A partir de ahí, los módulos JavaScript (`app.js`, `metadata-manager.js`, etc.)
-se cargarán correctamente y funcionarán los botones de carga de directorio,
-importación/exportación y el resto de la aplicación.
