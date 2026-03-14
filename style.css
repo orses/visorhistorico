@@ -1007,9 +1007,9 @@ textarea.form-control {
 /* Colores de estado - Más selectividad para ganar a status-indicator-large */
 .status-desaparecido,
 .status-indicator-large.status-desaparecido {
-    background-color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+    background-color: #888888;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
 .status-en-ruinas {

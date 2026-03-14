@@ -123,7 +123,7 @@ async function init() {
     uiManager.renderGallery([]);
 
     // Intentar restaurar sesión anterior de forma transparente
-    tryRestoreSession();
+    await tryRestoreSession();
 }
 
 async function tryRestoreSession() {
@@ -145,6 +145,17 @@ async function tryRestoreSession() {
         }
     } catch (e) {
         console.warn('Error al intentar recuperar el directorio handle:', e);
+    }
+
+    // Restaurar vista del mapa si existe
+    try {
+        const savedView = await get('map_view');
+        if (savedView && savedView.center && savedView.zoom != null) {
+            console.log('Restaurando vista del mapa:', savedView);
+            mapController.map.setView(savedView.center, savedView.zoom);
+        }
+    } catch (e) {
+        console.warn('Error al restaurar la vista del mapa:', e);
     }
 }
 
@@ -316,6 +327,19 @@ function setupGlobalListeners() {
             uiManager.showToast(`Ubicación asignada a ${selectedImagesList.length} imagen(es)`, 'success');
         }
     };
+
+    // Persistencia de la vista del mapa
+    mapController.map.on('moveend', async () => {
+        const center = mapController.getCenter();
+        const zoom = mapController.getZoom();
+        await set('map_view', { center, zoom });
+    });
+
+    mapController.map.on('zoomend', async () => {
+        const center = mapController.getCenter();
+        const zoom = mapController.getZoom();
+        await set('map_view', { center, zoom });
+    });
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {

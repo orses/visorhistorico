@@ -23,19 +23,48 @@ export default class UIManager {
     }
 
     // --- GALLERY RENDERING ---
-    renderGallery(files) {
+    async renderGallery(files) {
+        // Cancelar cualquier renderizado previo que pudiera estar en curso
+        if (this._renderContext) {
+            this._renderContext.cancelled = true;
+        }
+
         this.elements.galleryGrid.innerHTML = '';
-        const fragment = document.createDocumentFragment();
+        const context = { cancelled: false };
+        this._renderContext = context;
 
-        files.forEach(filename => {
-            const card = this.createGalleryItem(filename);
-            fragment.appendChild(card);
-        });
+        const batchSize = 20;
+        let index = 0;
 
-        this.elements.galleryGrid.appendChild(fragment);
+        const renderBatch = async () => {
+            if (context.cancelled) return;
 
-        this.elements.filteredCount.textContent = `${files.length} resultados`;
-        this.elements.filteredCount.classList.remove('hidden');
+            const fragment = document.createDocumentFragment();
+            const end = Math.min(index + batchSize, files.length);
+            
+            for (let i = index; i < end; i++) {
+                const card = this.createGalleryItem(files[i]);
+                fragment.appendChild(card);
+            }
+
+            this.elements.galleryGrid.appendChild(fragment);
+            index = end;
+
+            if (index < files.length) {
+                // Pequeña pausa para dejar que el navegador respire
+                requestAnimationFrame(() => renderBatch());
+            } else {
+                this.elements.filteredCount.textContent = `${files.length} resultados`;
+                this.elements.filteredCount.classList.remove('hidden');
+            }
+        };
+
+        if (files.length > 0) {
+            await renderBatch();
+        } else {
+            this.elements.filteredCount.textContent = `0 resultados`;
+            this.elements.filteredCount.classList.add('hidden');
+        }
     }
 
     createGalleryItem(filename) {

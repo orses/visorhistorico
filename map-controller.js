@@ -269,6 +269,11 @@ export default class MapController {
         return { lat: center.lat, lng: center.lng };
     }
 
+    // Obtener nivel de zoom actual
+    getZoom() {
+        return this.map.getZoom();
+    }
+
     // Buscar marcador cercano para snap (2 metros)
     findNearbyMarker(latlng, excludeFilename) {
         const SNAP_THRESHOLD_METERS = 2.0;
