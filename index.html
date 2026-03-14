@@ -243,21 +243,22 @@
         </div>
     </div>
 
+    <!-- MODAL DE MÉTODOS ABREVIADOS (Refinado) -->
     <div id="shortcutsModal" class="overlay-backdrop">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Métodos Abreviados de Teclado</h2>
-                <span class="close-modal-inline" onclick="document.getElementById('shortcutsModal').style.display='none'">&times;</span>
+                <span class="close-modal-inline" onclick="document.getElementById('shortcutsModal').classList.remove('active')">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="shortcuts-grid">
-                    <!-- Grupo 1: Búsqueda y Navegación General -->
+                    <!-- Grupo 1: Búsqueda -->
                     <div class="shortcut-group">
-                        <h3>Búsqueda y Navegación</h3>
+                        <h3>Búsqueda</h3>
                         <ul>
                             <li>
-                                <span>Focar buscador</span>
-                                <kbd>Ctrl</kbd><span>+</span><kbd>F</kbd>
+                                <span>Enfocar buscador</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>F</kbd></div>
                             </li>
                             <li>
                                 <span>Limpiar búsqueda</span>
@@ -266,74 +267,70 @@
                         </ul>
                     </div>
 
-                    <!-- Grupo 2: Galería y Visor -->
+                    <!-- Grupo 2: Navegación -->
                     <div class="shortcut-group">
-                        <h3>Galería y Visor</h3>
+                        <h3>Visor y Navegación</h3>
                         <ul>
                             <li>
-                                <span>Navegar en el visor</span>
+                                <span>Cambiar imagen</span>
                                 <div class="kbd-group"><kbd>←</kbd><kbd>→</kbd></div>
                             </li>
                             <li>
-                                <span>Ver imagen completa</span>
-                                <span class="shortcut-desc">Clic en miniatura</span>
-                            </li>
-                            <li>
                                 <span>Zoom progresivo</span>
-                                <kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Rueda</span>
+                                <div class="kbd-group"><span class="shortcut-desc">Rueda del ratón</span></div>
                             </li>
                             <li>
                                 <span>Zoom 100%</span>
-                                <kbd>Ctrl</kbd><span>+</span><kbd>0</kbd>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>0</kbd></div>
                             </li>
                             <li>
                                 <span>Ajustar a pantalla</span>
-                                <kbd>Ctrl</kbd><span>+</span><kbd>1</kbd>
-                            </li>
-                            <li>
-                                <span>Abrir edición</span>
-                                <kbd>Alt</kbd><span>+</span><kbd>E</kbd>
-                            </li>
-                            <li>
-                                <span>Cerrar ventanas</span>
-                                <kbd>ESC</kbd>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>1</kbd></div>
                             </li>
                         </ul>
                     </div>
 
-                    <!-- Grupo 3: Selección y Edición -->
+                    <!-- Grupo 3: Selección -->
                     <div class="shortcut-group">
                         <h3>Selección y Edición</h3>
                         <ul>
                             <li>
                                 <span>Selección múltiple</span>
-                                <kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic</span></div>
                             </li>
                             <li>
                                 <span>Selección en rango</span>
-                                <kbd>Shift</kbd><span>+</span><span class="shortcut-desc">Clic</span>
+                                <div class="kbd-group"><kbd>Shift</kbd><span>+</span><span class="shortcut-desc">Clic</span></div>
+                            </li>
+                            <li>
+                                <span>Abrir ficha edición</span>
+                                <div class="kbd-group"><kbd>Alt</kbd><span>+</span><kbd>E</kbd></div>
                             </li>
                             <li>
                                 <span>Guardar cambios</span>
-                                <kbd>Ctrl</kbd><span>+</span><kbd>G</kbd>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>G</kbd></div>
                             </li>
                         </ul>
                     </div>
 
-                    <!-- Grupo 4: Mapa -->
+                    <!-- Grupo 4: Otros -->
                     <div class="shortcut-group">
-                        <h3>Mapa e Interacción</h3>
+                        <h3>Otros comandos</h3>
                         <ul>
                             <li>
                                 <span>Situar en el mapa</span>
-                                <kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic mapa</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic Mapa</span></div>
+                            </li>
+                            <li>
+                                <span>Cerrar ventana</span>
+                                <kbd>ESC</kbd>
                             </li>
                         </ul>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="closeShortcutsBtn">Cerrar</button>
+                <button class="btn" id="closeShortcutsBtn" onclick="document.getElementById('shortcutsModal').classList.remove('active')">Cerrar</button>
             </div>
         </div>
     </div>

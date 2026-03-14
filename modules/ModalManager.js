@@ -136,10 +136,8 @@ export default class ModalManager {
             img.style.cursor = isDragging ? 'grabbing' : (this.zoomState.scale > 1 ? 'grab' : 'default');
         };
 
-        // WHEEL ZOOM (Requiere Ctrl para mayor control UX)
+        // WHEEL ZOOM (Restaurado a comportamiento original sin Ctrl)
         const onWheel = (e) => {
-            if (!e.ctrlKey) return; // Solo zoom si se pulsa Ctrl, como en buscadores
-            
             e.preventDefault();
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
             const newScale = this.zoomState.scale * delta;
