@@ -71,9 +71,11 @@ export default class ModalManager {
             if (this.isImageModalOpen() && e.ctrlKey) {
                 if (e.key === '0') {
                     e.preventDefault();
+                    e.stopPropagation();
                     this.resetZoom();
                 } else if (e.key === '1') {
                     e.preventDefault();
+                    e.stopPropagation();
                     this.fitToScreen();
                 }
             }

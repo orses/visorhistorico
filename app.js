@@ -370,9 +370,11 @@ function setupGlobalListeners() {
         if (modalManager.isImageModalOpen()) {
             if (e.key === 'ArrowRight') {
                 e.preventDefault();
+                e.stopPropagation();
                 navigateGallery(1);
             } else if (e.key === 'ArrowLeft') {
                 e.preventDefault();
+                e.stopPropagation();
                 navigateGallery(-1);
             }
         }
