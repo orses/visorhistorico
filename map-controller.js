@@ -166,18 +166,27 @@ export default class MapController {
             'status-sin-clasificar';
 
         return `
-            <div class="map-popup-container" style="width: 220px; font-family: 'Inter', sans-serif;">
-                <img src="${imgPath}" class="popup-image" 
-                     data-filename="${filename.replace(/"/g, '&quot;')}" 
-                     style="cursor: zoom-in; transition: transform 0.2s;"
-                     onerror="this.style.display='none'">
-                <div class="popup-title">
-                    <span class="status-dot ${statusClass}" title="${metadata.conservationStatus || 'Sin clasificar'}" style="width:6px; height:6px; margin-right:4px;"></span>
-                    ${metadata.mainSubject || 'Sin título'}
+            <div class="map-popup-container">
+                <div class="popup-image-wrapper">
+                    <img src="${imgPath}" class="popup-image" 
+                         data-filename="${filename.replace(/"/g, '&quot;')}" 
+                         title="Haz clic para ampliar"
+                         onerror="this.style.display='none'">
+                    <div class="popup-zoom-hint">Haga clic para ampliar</div>
                 </div>
-                ${metadata.location ? `<div style="font-size: 0.85rem; margin: 0.25rem 0; color: #ccc;">${metadata.location}</div>` : ''}
-                <div class="popup-date" style="font-size: 0.8rem; opacity: 0.7;">${dateStr}${metadata.centuries.length > 0 ? ' • ' + metadata.centuries.join(', ') : ''}</div>
-                ${metadata.author ? `<div style="font-size: 0.8rem; color: var(--accent-secondary); margin-top: 0.25rem; font-weight: 500;">${metadata.author}</div>` : ''}
+                <div class="popup-body">
+                    <div class="popup-title">
+                        <span class="status-dot ${statusClass}" title="${metadata.conservationStatus || 'Sin clasificar'}"></span>
+                        ${metadata.mainSubject || 'Sin título'}
+                    </div>
+                    ${metadata.location ? `<div class="popup-location">${metadata.location}</div>` : ''}
+                    <div class="popup-meta">
+                        <span class="popup-date">${dateStr}</span>
+                        ${metadata.centuries.length > 0 ? `<span class="popup-century">${metadata.centuries.join(', ')}</span>` : ''}
+                    </div>
+                    ${metadata.author ? `<div class="popup-author"><span>Autor:</span> ${metadata.author}</div>` : ''}
+                    <button class="popup-action-btn" data-filename="${filename.replace(/"/g, '&quot;')}">Ver imagen completa</button>
+                </div>
             </div>
         `;
     }

@@ -155,6 +155,11 @@ export default class UIManager {
                 card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
+
+        // NOTIFICAR AL CONTROLADOR (Fix sincronización mapa/atajos -> panel detalles)
+        if (this.onSelectImage) {
+            this.onSelectImage(this.lastSelectedImage, Array.from(this.selectedImages));
+        }
     }
 
     // --- OPTIMIZACIÓN: Actualizar solo un ítem de la galería ---

@@ -5,6 +5,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import * as UTIF from 'utif';
 import { registerSW } from 'virtual:pwa-register';
+import { get, set } from 'idb-keyval';
 
 import MetadataManager from './metadata-manager.js';
 import MapController from './map-controller.js';
@@ -88,10 +89,13 @@ async function init() {
         modalManager.openImageModal(filename);
     });
 
-    // Listener global para clics en imágenes de popups (delegación)
+    // Listener global para clics en imágenes de popups y botones de acción (delegación)
     document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('popup-image') && e.target.dataset.filename) {
-            modalManager.openImageModal(e.target.dataset.filename);
+        const target = e.target;
+        const filename = target.dataset.filename;
+        
+        if (filename && (target.classList.contains('popup-image') || target.classList.contains('popup-action-btn'))) {
+            modalManager.openImageModal(filename);
         }
     });
 
@@ -117,13 +121,56 @@ async function init() {
 
     // Initial State: Empty until load
     uiManager.renderGallery([]);
+
+    // Intentar restaurar sesión anterior de forma transparente
+    tryRestoreSession();
+}
+
+async function tryRestoreSession() {
+    try {
+        const savedHandle = await get('visor_historico_dir_handle');
+        if (savedHandle) {
+            console.log('Sesión anterior detectada. Esperando permiso del usuario para restaurar...');
+            // No podemos pedir permiso automáticamente sin gesto del usuario en algunos navegadores, 
+            // pero podemos preparar el botón de carga para que use este handle.
+            window.pendingDirectoryHandle = savedHandle;
+            
+            // Mostrar un aviso o cambiar el estilo del botón de carga
+            const loadBtn = document.getElementById('loadDirBtn');
+            if (loadBtn) {
+                loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon></svg>Recuperar Sesión</span>`;
+                loadBtn.title = "Se ha detectado una carpeta cargada anteriormente. Haz clic para restaurar el acceso.";
+                loadBtn.classList.add('btn-restore-highlight');
+            }
+        }
+    } catch (e) {
+        console.warn('Error al intentar recuperar el directorio handle:', e);
+    }
 }
 
 function setupGlobalListeners() {
     // Load Button
-    document.getElementById('loadDirBtn')?.addEventListener('click', () => {
-        console.log('Botón Cargar clickeado - Intentando abrir selector de directorio...');
-        loadImagesFromDirectory();
+    document.getElementById('loadDirBtn')?.addEventListener('click', async () => {
+        if (window.pendingDirectoryHandle) {
+            // Intentar usar el handle guardado
+            const handle = window.pendingDirectoryHandle;
+            
+            // Verificar si tenemos permiso
+            const options = { mode: 'read' };
+            if (await handle.queryPermission(options) === 'granted') {
+                loadImagesFromDirectory(handle);
+            } else {
+                // Pedir permiso explícitamente (cuenta como gesto del usuario)
+                if (await handle.requestPermission(options) === 'granted') {
+                    loadImagesFromDirectory(handle);
+                } else {
+                    // Si el usuario deniega el permiso del antiguo, abrir selector nuevo
+                    loadImagesFromDirectory();
+                }
+            }
+        } else {
+            loadImagesFromDirectory();
+        }
     });
 
     // Search Input
@@ -318,21 +365,37 @@ function setupGlobalListeners() {
 
 let allScannedFiles = []; // For statistics
 
-async function loadImagesFromDirectory() {
+async function loadImagesFromDirectory(existingHandle = null) {
     try {
-        // Verificar compatibilidad con la API
-        if (!window.showDirectoryPicker) {
-            alert('Tu navegador no soporta la selección de directorios.\n\n' +
-                'Navegadores compatibles:\n' +
-                '• Google Chrome/Edge (versión 86+)\n' +
-                '• Opera (versión 72+)\n\n' +
-                'Firefox no soporta esta API actualmente.');
-            console.error('showDirectoryPicker API no disponible');
-            return;
+        let dirHandle;
+        
+        if (existingHandle) {
+            dirHandle = existingHandle;
+        } else {
+            // Verificar compatibilidad con la API
+            if (!window.showDirectoryPicker) {
+                alert('Tu navegador no soporta la selección de directorios.\n\n' +
+                    'Navegadores compatibles:\n' +
+                    '• Google Chrome/Edge (versión 86+)\n' +
+                    '• Opera (versión 72+)\n\n' +
+                    'Firefox no soporta esta API actualmente.');
+                console.error('showDirectoryPicker API no disponible');
+                return;
+            }
+            dirHandle = await window.showDirectoryPicker();
+            // Guardar para futuras sesiones
+            await set('visor_historico_dir_handle', dirHandle);
         }
 
-        const dirHandle = await window.showDirectoryPicker();
         uiManager.showToast('Cargando directorio...', 'normal');
+
+        // Restaurar estado visual del botón si estaba en modo recuperar
+        const loadBtn = document.getElementById('loadDirBtn');
+        if (loadBtn) {
+            loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cargar</span>`;
+            loadBtn.classList.remove('btn-restore-highlight');
+            window.pendingDirectoryHandle = null;
+        }
 
         metadataManager.suspendSave(); // Avoid 1000+ writes to localStorage
 
