@@ -58,13 +58,24 @@ export default class ModalManager {
             this.uiManager.showToast(`Dataset descargado: ${filename}`, 'success');
         });
 
-        // Global Keydown for ESC
+        // Global Keydown for ESC and Zoom shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (this.elements.imageModal.classList.contains('active')) this.closeImageModal();
                 if (this.elements.editModal.classList.contains('active')) this.closeEditModal();
                 if (this.elements.statsModal.classList.contains('active')) this.closeStatsModal();
                 if (this.elements.shortcutsModal?.classList.contains('active')) this.closeShortcutsModal();
+            }
+
+            // Atajos de Zoom (solo si el visor está abierto)
+            if (this.isImageModalOpen() && e.ctrlKey) {
+                if (e.key === '0') {
+                    e.preventDefault();
+                    this.resetZoom();
+                } else if (e.key === '1') {
+                    e.preventDefault();
+                    this.fitToScreen();
+                }
             }
         });
 
@@ -125,18 +136,23 @@ export default class ModalManager {
             img.style.cursor = isDragging ? 'grabbing' : (this.zoomState.scale > 1 ? 'grab' : 'default');
         };
 
-        // WHEEL ZOOM
+        // WHEEL ZOOM (Requiere Ctrl para mayor control UX)
         const onWheel = (e) => {
+            if (!e.ctrlKey) return; // Solo zoom si se pulsa Ctrl, como en buscadores
+            
             e.preventDefault();
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
             const newScale = this.zoomState.scale * delta;
 
             // Limit zoom
-            if (newScale < 0.5 || newScale > 10) return;
+            if (newScale < 0.1 || newScale > 20) return;
 
             this.zoomState.scale = newScale;
             updateTransform();
         };
+
+        // Guardar referencia para actualizaciones externas
+        this._updateZoomTransform = updateTransform;
 
         // DRAG PAN
         const onMouseDown = (e) => {
@@ -178,6 +194,34 @@ export default class ModalManager {
         this.elements.imageModal.classList.remove('active');
         this.currentImageFile = null;
         if (this._zoomCleanup) this._zoomCleanup();
+        this._updateZoomTransform = null;
+    }
+
+    resetZoom() {
+        this.zoomState = { scale: 1, pX: 0, pY: 0 };
+        if (this._updateZoomTransform) this._updateZoomTransform();
+    }
+
+    fitToScreen() {
+        if (!this.elements.modalImage) return;
+        
+        const img = this.elements.modalImage;
+        const container = img.parentElement;
+        
+        const containerW = container.clientWidth;
+        const containerH = container.clientHeight;
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+        
+        const ratioW = containerW / imgW;
+        const ratioH = containerH / imgH;
+        
+        // El menor de los dos para que quepa (contain)
+        this.zoomState.scale = Math.min(ratioW, ratioH, 1);
+        this.zoomState.pX = 0;
+        this.zoomState.pY = 0;
+        
+        if (this._updateZoomTransform) this._updateZoomTransform();
     }
 
     isImageModalOpen() {
