@@ -23,9 +23,16 @@ export default class MapController {
             maxZoom: 19
         });
 
+        const texeira = L.tileLayer('https://www.ign.es/wmts/planos?layer=teixeira&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}', {
+            attribution: '&copy; Instituto Geográfico Nacional',
+            maxZoom: 20,
+            tms: false
+        });
+
         this.baseLayers = {
             "Mapa": osm,
-            "Satélite": satellite
+            "Satélite": satellite,
+            "Pedro Texeira (1656)": texeira
         };
 
         // 2. Crear mapa centrado en Madrid con Mapa por defecto

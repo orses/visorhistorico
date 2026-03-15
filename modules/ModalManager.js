@@ -67,6 +67,15 @@ export default class ModalManager {
                 if (this.elements.shortcutsModal?.classList.contains('active')) this.closeShortcutsModal();
             }
 
+            // Atajos de Edición (solo si el modal de edición está abierto)
+            if (this.isEditModalOpen() && e.ctrlKey) {
+                if (e.key.toLowerCase() === 'g' || e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.saveEdit();
+                }
+            }
+
             // Atajos de Zoom (solo si el visor está abierto)
             if (this.isImageModalOpen() && e.ctrlKey) {
                 if (e.key === '0') {
@@ -228,6 +237,10 @@ export default class ModalManager {
         return this.elements.imageModal.classList.contains('active');
     }
 
+    isEditModalOpen() {
+        return this.elements.editModal.classList.contains('active');
+    }
+
     // --- EDIT MODAL ---
     openEditModal(filename) {
         this.currentEditFile = filename;
@@ -269,7 +282,7 @@ export default class ModalManager {
                     { id: 'sourceUrl', label: 'Enlace a la fuente', type: 'text' },
                     { id: 'authorUrl', label: 'Referencia Autor', type: 'text' },
                     { id: 'license', label: 'Licencia', type: 'text' },
-                    { id: 'fullPath', label: 'Ruta completa del archivo', type: 'textarea', rows: 2, readonly: true }
+                    { id: 'fullPath', label: 'Ruta completa del archivo', type: 'textarea', full: true, rows: 4, readonly: true }
                 ]
             },
             {

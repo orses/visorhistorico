@@ -1174,9 +1174,13 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
 
 .edit-modal textarea[readonly] {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    background: rgba(0, 0, 0, 0.4);
-    color: var(--text-muted);
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--accent-primary);
+    border-color: rgba(0, 242, 254, 0.2);
+    padding: 1rem;
+    line-height: 1.6;
+    cursor: default;
 }
 
 
