@@ -251,16 +251,29 @@ function setupGlobalListeners() {
         const isExpanded = panel.classList.toggle('expanded');
         btn.classList.toggle('active', isExpanded);
         
-        // Ajustar columnas de la galería si está expandida para aprovechar espacio
+        // Al expandir, ocultamos filtros por defecto para que las imágenes sean protagonistas
+        if (isExpanded) {
+            panel.classList.remove('show-filters');
+            document.getElementById('toggleFiltersBtn')?.classList.remove('active');
+        }
+
+        // Ajustar columnas de la galería si está expandida
         const grid = document.getElementById('galleryGrid');
         if (isExpanded) {
-            // Si estaba en 2, pasar a 4 para aprovechar el ancho
-            if (grid.classList.contains('grid-cols-2')) {
+            if (grid.classList.contains('grid-cols-1') || grid.classList.contains('grid-cols-2')) {
                 grid.className = 'gallery-grid grid-cols-4';
                 document.querySelectorAll('[data-cols]').forEach(b => b.classList.remove('active'));
                 document.querySelector('[data-cols="4"]')?.classList.add('active');
             }
         }
+    });
+
+    // Toggle Filters in Expanded Mode
+    document.getElementById('toggleFiltersBtn')?.addEventListener('click', (e) => {
+        const panel = document.querySelector('.gallery-panel');
+        const btn = e.target.closest('button');
+        const isShown = panel.classList.toggle('show-filters');
+        btn.classList.toggle('active', isShown);
     });
 
     // Import/Export Metadata (Legacy buttons, routed through managers if needed or kept simple)
@@ -388,13 +401,20 @@ function setupGlobalListeners() {
         // FLECHAS: Navegación por galería (si el modal está abierto)
         if (modalManager.isImageModalOpen()) {
             if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                e.stopPropagation();
-                navigateGallery(1);
+                e.preventDefault(); e.stopPropagation(); navigateGallery(1);
             } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                e.stopPropagation();
-                navigateGallery(-1);
+                e.preventDefault(); e.stopPropagation(); navigateGallery(-1);
+            }
+        }
+
+        // ESCAPE en Galería Expandida
+        if (e.key === 'Escape') {
+            const panel = document.querySelector('.gallery-panel');
+            if (panel.classList.contains('expanded') && !modalManager.isImageModalOpen() && !modalManager.isEditModalOpen()) {
+                panel.classList.remove('expanded');
+                document.getElementById('expandGalleryBtn')?.classList.remove('active');
+                panel.classList.remove('show-filters');
+                document.getElementById('toggleFiltersBtn')?.classList.remove('active');
             }
         }
     });

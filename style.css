@@ -219,23 +219,26 @@ body {
     border-bottom: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-    max-height: 400px;
-    overflow-y: auto;
+    gap: 0.2rem; /* Reducido */
 }
 
 .gallery-panel.expanded .toolbar {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-start;
-    max-height: none;
-    overflow: visible;
+    padding: 1.2rem; /* Más aire */
+    display: none;
+    gap: 1.5rem; /* Separación entre grupos de filtros */
+}
+
+.gallery-panel.expanded.show-filters .toolbar {
+    display: flex;
 }
 
 .gallery-panel.expanded .filter-section {
     flex: 1;
     min-width: 200px;
-    padding: 4px 8px;
+    padding: 2px 8px; /* Reducido */
     border-right: 1px solid var(--border-light);
     border-top: none !important;
     margin-top: 0 !important;
@@ -349,10 +352,38 @@ body {
     flex: 1;
 }
 
+/* Colapso de secciones */
+.filter-chips-wrapper {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.filter-section.collapsed .filter-chips-wrapper {
+    max-height: 0;
+}
+
+.filter-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.filter-section.collapsed .filter-toggle-btn {
+    transform: rotate(-90deg);
+}
+
 .filter-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    padding-bottom: 8px; /* Espacio para que no se pegue al borde al colapsar */
 }
 
 .view-controls-group {
@@ -391,13 +422,20 @@ body {
 
 .gallery-info {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 3rem; /* Espacio muy amplio para evitar amontonamiento */
+    padding: 0.5rem 0.8rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin-bottom: 1rem;
     font-size: 0.85rem;
     color: var(--accent-primary);
-    /* Color de acento cyan */
-    margin-bottom: 1rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
+}
+
+.gallery-info span {
+    display: inline-flex;
+    align-items: center;
 }
 
 #filteredCount {

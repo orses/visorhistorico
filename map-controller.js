@@ -23,8 +23,8 @@ export default class MapController {
             maxZoom: 19
         });
 
-        const texeira = L.tileLayer.wms('https://www.ign.es/wms-inspire/planos', {
-            layers: 'Texeira',
+        const texeira = L.tileLayer.wms('https://www.ign.es/wms/planos', {
+            layers: 'texeira',
             format: 'image/jpeg',
             transparent: false,
             version: '1.3.0',

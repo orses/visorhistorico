@@ -45,23 +45,29 @@ export default class BaseFilter {
         const showCounts = this.currentImages.length > 0 && countFn !== null;
 
         let html = `
-            <div class="filter-section" data-group="${group}">
+            <div class="filter-section ${options.collapsed ? 'collapsed' : ''}" data-group="${group}">
                 <div class="filter-header">
+                    <button class="filter-toggle-btn" data-group="${group}">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
                     <span class="filter-label">${label}:</span>
                     <button class="filter-btn" data-action="select-all" data-group="${group}">${allLabel}</button>
                     <button class="filter-btn" data-action="select-none" data-group="${group}">${noneLabel}</button>
                     <div class="filter-separator"></div>
                 </div>
-                <div class="filter-chips">
+                <div class="filter-chips-wrapper">
+                    <div class="filter-chips">
         `;
-
+ 
         chips.forEach(chip => {
             const isActive = activeSet ? activeSet.has(chip.value) : allActive;
             const countStr = showCounts ? ` <span class="chip-count">${countFn(chip.value)}</span>` : '';
             html += `<div class="chip ${isActive ? 'active' : ''}" data-${dataAttr}="${chip.value}">${chip.label}${countStr}</div>`;
         });
-
-        html += `</div></div>`;
+ 
+        html += `</div></div></div>`;
         return html;
     }
 
@@ -96,6 +102,12 @@ export default class BaseFilter {
             this.container.querySelectorAll(`.chip[data-${dataAttr}]`).forEach(c => c.classList.remove('active'));
             if (onUpdate) onUpdate();
             this.onFilterChange();
+        });
+
+        // Toggle Colapso
+        this.container.querySelector(`.filter-toggle-btn[data-group="${group}"]`)?.addEventListener('click', (e) => {
+            const section = e.target.closest('.filter-section');
+            section.classList.toggle('collapsed');
         });
     }
 
