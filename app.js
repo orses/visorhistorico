@@ -244,6 +244,25 @@ function setupGlobalListeners() {
         });
     });
 
+    // Expand Gallery
+    document.getElementById('expandGalleryBtn')?.addEventListener('click', (e) => {
+        const panel = document.querySelector('.gallery-panel');
+        const btn = e.target.closest('button');
+        const isExpanded = panel.classList.toggle('expanded');
+        btn.classList.toggle('active', isExpanded);
+        
+        // Ajustar columnas de la galería si está expandida para aprovechar espacio
+        const grid = document.getElementById('galleryGrid');
+        if (isExpanded) {
+            // Si estaba en 2, pasar a 4 para aprovechar el ancho
+            if (grid.classList.contains('grid-cols-2')) {
+                grid.className = 'gallery-grid grid-cols-4';
+                document.querySelectorAll('[data-cols]').forEach(b => b.classList.remove('active'));
+                document.querySelector('[data-cols="4"]')?.classList.add('active');
+            }
+        }
+    });
+
     // Import/Export Metadata (Legacy buttons, routed through managers if needed or kept simple)
     document.getElementById('exportBtn')?.addEventListener('click', () => {
         metadataManager.exportToJSON();
@@ -642,7 +661,7 @@ function refreshUI(filename, fieldAffected = null) {
     // Si no sabemos qué cambió, o cambió un campo de filtro, re-filtramos todo
     if (!fieldAffected || filterFields.includes(fieldAffected)) {
         const currentSearch = document.getElementById('searchInput').value;
-        filterManager.applyFilters(currentSearch);
+        filterManager.applyFilters(currentSearch, true); // forceRefresh = true para actualizar contadores
     } else {
         // Si es un campo puramente informativo (Asunto, Autor, Notas...) 
         // solo actualizamos la miniatura visualmente para no perder el scroll ni el foco

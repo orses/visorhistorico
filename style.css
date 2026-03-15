@@ -205,6 +205,12 @@ body {
     border-right: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
+
+.gallery-panel.expanded {
+    width: calc(100vw - var(--width-details) - 40px);
 }
 
 .toolbar {
@@ -249,10 +255,16 @@ body {
 }
 
 .chip-count {
-    color: var(--text-dim);
-    font-size: 0.6rem;
-    font-weight: 400;
-    margin-left: 2px;
+    color: var(--text-main); /* Mayor contraste */
+    font-size: 0.8rem; /* Aumentado de 0.6rem */
+    font-weight: 600;
+    margin-left: 6px;
+    opacity: 0.7;
+}
+
+.chip.active .chip-count {
+    color: var(--accent-primary);
+    opacity: 1;
 }
 
 /* --- FILTROS: ESTRUCTURA --- */

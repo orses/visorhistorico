@@ -41,14 +41,13 @@ export default class FilterManager {
         this.geographicFilter.render();
     }
 
-    applyFilters(searchQuery = '') {
+    applyFilters(searchQuery = '', forceRefresh = false) {
         // 1. Text Search (using SearchEngine)
-        // Note: Ideally SearchEngine should handle "partial" updates, but we'll re-run for now.
-        // We'll store the last query to reuse it in external calls if needed, or pass it through.
-        this.lastQuery = searchQuery;
+        if (searchQuery !== null) this.lastQuery = searchQuery;
+        const query = this.lastQuery || '';
 
-        let candidates = searchQuery
-            ? this.searchEngine.search(searchQuery).map(r => r.filename)
+        let candidates = query
+            ? this.searchEngine.search(query).map(r => r.filename)
             : [...this.currentImages];
 
         // 2. Apply Modules
@@ -60,6 +59,11 @@ export default class FilterManager {
             if (!this.geographicFilter.matches(filename)) return false;
             return true;
         });
+
+        // Refrescar controladores si se solicita (para actualizar contadores)
+        if (forceRefresh) {
+            this.renderControllers();
+        }
 
         // 3. Map Data (ignores Positioning Filter "without_coords" case)
         const mapFiltered = candidates.filter(filename => {
