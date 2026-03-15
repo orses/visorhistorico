@@ -268,12 +268,25 @@ function setupGlobalListeners() {
         }
     });
 
-    // Toggle Filters in Expanded Mode
+    // Toggle Filters in Expanded Mode (and general collapse)
     document.getElementById('toggleFiltersBtn')?.addEventListener('click', (e) => {
         const panel = document.querySelector('.gallery-panel');
         const btn = e.target.closest('button');
-        const isShown = panel.classList.toggle('show-filters');
-        btn.classList.toggle('active', isShown);
+        
+        // Si estamos en modo expandido, alternamos la clase show-filters
+        if (panel.classList.contains('expanded')) {
+            const isShown = panel.classList.toggle('show-filters');
+            btn.classList.toggle('active', isShown);
+        } else {
+            // Si estamos en modo lateral, contraemos/expandimos todas las secciones
+            const firstSection = document.querySelector('.filter-section');
+            const shouldCollapse = firstSection && !firstSection.classList.contains('collapsed');
+            
+            document.querySelectorAll('.filter-section').forEach(section => {
+                section.classList.toggle('collapsed', shouldCollapse);
+            });
+            btn.classList.toggle('active', !shouldCollapse);
+        }
     });
 
     // Import/Export Metadata (Legacy buttons, routed through managers if needed or kept simple)
@@ -396,6 +409,12 @@ function setupGlobalListeners() {
             } else {
                 uiManager.showToast('Selecciona una imagen primero', 'error');
             }
+        }
+
+        // Alt + G: Expandir Galería
+        if (e.altKey && e.key.toLowerCase() === 'g') {
+            e.preventDefault();
+            document.getElementById('expandGalleryBtn')?.click();
         }
 
         // FLECHAS: Navegación por galería (si el modal está abierto)
@@ -675,16 +694,18 @@ function refreshUI(filename, fieldAffected = null) {
         }
     }
 
-    // 2. Decisión inteligente: ¿Necesitamos re-filtrar todo o solo actualizar la tarjeta?
-    const filterFields = ['centuries', 'type', 'conservationStatus', 'coordinates.lat', 'coordinates.lng'];
+    // 2. Decisión inteligente: ¿Necesitamos re-filtrar todo (destructivo) o solo actualizar la tarjeta (ligero)?
+    // Campos que SI afectan a los filtros y requieren re-filtrar
+    const filterFields = ['centuries', 'reign', 'type', 'conservationStatus', 'coordinates.lat', 'coordinates.lng'];
 
-    // Si no sabemos qué cambió, o cambió un campo de filtro, re-filtramos todo
-    if (!fieldAffected || filterFields.includes(fieldAffected)) {
+    // Si el campo afectado es uno de los críticos, aplicamos filtros de forma ligera
+    if (!fieldAffected || filterFields.some(f => fieldAffected.startsWith(f))) {
         const currentSearch = document.getElementById('searchInput').value;
-        filterManager.applyFilters(currentSearch, true); // forceRefresh = true para actualizar contadores
+        // Solo re-filtramos, pero debemos evitar que esto borre el scroll si es posible
+        // Por ahora, forzamos recarga solo si es necesario
+        filterManager.applyFilters(currentSearch, true); 
     } else {
-        // Si es un campo puramente informativo (Asunto, Autor, Notas...) 
-        // solo actualizamos la miniatura visualmente para no perder el scroll ni el foco
+        // ACTUALIZACIÓN PARCIAL: Solo el ítem de la galería. NO se pierde el scroll ni el foco.
         uiManager.updateGalleryItem(filename);
     }
 }

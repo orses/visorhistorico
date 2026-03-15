@@ -27,32 +27,38 @@ export default class GeographicFilter extends BaseFilter {
     render() {
         if (!this.container) return;
 
-        const html = `
-            <div class="filter-section" data-group="geo">
-                <div class="filter-header">
-                    <span class="filter-label">GEOGRAFÍA:</span>
-                    <button class="filter-btn" data-action="reset" data-group="geo">LIMPIAR</button>
-                    <div class="filter-separator"></div>
-                </div>
-                <div class="filter-chips">
-                    <div class="chip ${this.activeMode === 'radius' ? 'active' : ''}" data-mode="radius">Radio (500m)</div>
-                    <div class="chip ${this.activeMode === 'polygon' ? 'active' : ''}" data-mode="polygon">Barrios</div>
-                </div>
-                ${this.activeMode === 'polygon' ? `
-                    <div class="filter-chips" style="margin-top:8px;">
-                        ${Object.keys(this.districts).map(name => `
-                            <div class="chip ${this.activePolygonName === name ? 'active' : ''}" data-district="${name}">${name}</div>
-                        `).join('')}
-                    </div>
-                ` : ''}
+        const bodyHtml = `
+            <div class="filter-chips">
+                <div class="chip ${this.activeMode === 'radius' ? 'active' : ''}" data-mode="radius">Radio (500m)</div>
+                <div class="chip ${this.activeMode === 'polygon' ? 'active' : ''}" data-mode="polygon">Barrios</div>
             </div>
+            ${this.activeMode === 'polygon' ? `
+                <div class="filter-chips" style="margin-top:8px;">
+                    ${Object.keys(this.districts).map(name => `
+                        <div class="chip ${this.activePolygonName === name ? 'active' : ''}" data-district="${name}">${name}</div>
+                    `).join('')}
+                </div>
+            ` : ''}
         `;
 
-        this.container.innerHTML = html;
+        this.container.innerHTML = this.renderSection('geo', 'GEOGRAFÍA', [], null, {
+            allLabel: '', // No aplicable aquí
+            noneLabel: 'LIMPIAR'
+        });
+
+        // Reemplazar el contenedor de chips por el nuestro personalizado
+        this.container.querySelector('.filter-chips-wrapper').innerHTML = bodyHtml;
+
         this.attachListeners();
+        this.attachBulkListeners('geo', 'mode', null, () => {
+             this.activeMode = 'none';
+             this.filterCoords = null;
+             this.activePolygonName = null;
+        });
     }
 
     attachListeners() {
+        // Los listeners específicos los mantenemos
         this.container.querySelectorAll('[data-mode]').forEach(chip => {
             chip.addEventListener('click', () => {
                 const mode = chip.dataset.mode;
@@ -60,14 +66,6 @@ export default class GeographicFilter extends BaseFilter {
                 this.render();
                 this.onFilterChange();
             });
-        });
-
-        this.container.querySelector('[data-action="reset"]')?.addEventListener('click', () => {
-            this.activeMode = 'none';
-            this.filterCoords = null;
-            this.activePolygonName = null;
-            this.render();
-            this.onFilterChange();
         });
 
         this.container.querySelectorAll('[data-district]').forEach(btn => {

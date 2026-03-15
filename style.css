@@ -49,8 +49,8 @@ body {
 
 /* Scrollbar Personalizado */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px; /* Ensanchado de 6px a 10px para mayor comodidad */
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -214,31 +214,44 @@ body {
 }
 
 .toolbar {
-    padding: 0.5rem;
+    padding: 0.8rem;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    gap: 0.2rem; /* Reducido */
+    gap: 0.8rem;
 }
 
 .gallery-panel.expanded .toolbar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    padding: 1.2rem; /* Más aire */
-    display: none;
-    gap: 1.5rem; /* Separación entre grupos de filtros */
+    padding: 1rem 1.5rem;
 }
 
-.gallery-panel.expanded.show-filters .toolbar {
+/* Contenedor para filtros que se puede ocultar */
+.filters-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.gallery-panel.expanded .filters-wrapper {
+    display: none; /* Oculto por defecto en modo expandido */
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}
+
+.gallery-panel.expanded.show-filters .filters-wrapper {
     display: flex;
 }
 
 .gallery-panel.expanded .filter-section {
     flex: 1;
-    min-width: 200px;
-    padding: 2px 8px; /* Reducido */
+    min-width: 250px;
+    padding: 0.5rem 1rem;
     border-right: 1px solid var(--border-light);
     border-top: none !important;
     margin-top: 0 !important;
@@ -460,9 +473,10 @@ body {
     grid-template-columns: repeat(4, 1fr);
 }
 
-/* Optimización para vista de 4 columnas (muy estrecha) */
+/* Optimización para vista de 4 columnas */
 .grid-cols-4 .card-meta {
-    display: none !important;
+    display: flex !important; /* Restaurado */
+    font-size: 0.65rem; /* Ajustado para el poco espacio */
 }
 
 .grid-cols-2 .card-title {
@@ -470,17 +484,16 @@ body {
 }
 
 .grid-cols-4 .card-title {
-    font-size: 0.68rem;
-    /* Más pequeño aún */
+    font-size: 0.75rem; /* Un poco más grande para legibilidad */
     white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    height: 2.2em;
-    margin-bottom: 2px;
-    line-height: 1.1;
+    height: 2.4em;
+    margin-bottom: 4px;
+    line-height: 1.2;
 }
 
 .grid-cols-4 .card-info {

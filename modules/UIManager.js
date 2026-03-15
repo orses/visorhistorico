@@ -29,6 +29,14 @@ export default class UIManager {
             this._renderContext.cancelled = true;
         }
 
+        // Si la lista es idéntica a la que ya tenemos, no hacemos nada drástico
+        // Esto previene el parpadeo constante si applyFilters se llama sin cambios reales
+        if (this._lastFiles && JSON.stringify(this._lastFiles) === JSON.stringify(files)) {
+            console.log('UIManager: Galería idéntica, omitiendo re-renderizado completo.');
+            return;
+        }
+        this._lastFiles = [...files];
+
         this.elements.galleryGrid.innerHTML = '';
         const context = { cancelled: false };
         this._renderContext = context;
@@ -467,6 +475,16 @@ export default class UIManager {
             if (input.tagName === 'SELECT') {
                 input.addEventListener('change', saveHandler);
             }
+
+            // Atajos de guardado rápido (Ctrl + G / Ctrl + S)
+            input.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && (e.key.toLowerCase() === 'g' || e.key.toLowerCase() === 's')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveHandler();
+                    this.showToast('Cambios guardados', 'success');
+                }
+            });
         });
     }
 

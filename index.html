@@ -102,69 +102,73 @@
         <!-- 1. Gallery Panel (Left) -->
         <aside class="gallery-panel">
             <div class="toolbar">
-                <div class="type-filters" id="typeFilters">
-                    <!-- Dynamic filters for type and extension -->
-                </div>
-                <div class="century-filters" id="centuryFilters">
-                    <!-- Dynamic filters -->
-                </div>
-                <div class="conservation-filters" id="conservationFilters">
-                    <!-- Dynamic filters for conservation status -->
-                </div>
-                <div class="positioning-filters" id="positioningFilters">
-                    <!-- Dynamic filters for positioning -->
-                </div>
-                <div class="geographic-filters" id="geographicFilters">
-                    <!-- Dynamic filters for geography (Radius/Polygons) -->
-                </div>
-
-                <div class="gallery-info" style="margin-bottom:0.5rem;">
-                    <span id="totalCount">0 catalogados</span>
-                    <span id="filteredCount" class="hidden"></span>
+                <div class="filters-wrapper">
+                    <div class="type-filters" id="typeFilters">
+                        <!-- Dynamic filters for type and extension -->
+                    </div>
+                    <div class="century-filters" id="centuryFilters">
+                        <!-- Dynamic filters -->
+                    </div>
+                    <div class="conservation-filters" id="conservationFilters">
+                        <!-- Dynamic filters for conservation status -->
+                    </div>
+                    <div class="positioning-filters" id="positioningFilters">
+                        <!-- Dynamic filters for positioning -->
+                    </div>
+                    <div class="geographic-filters" id="geographicFilters">
+                        <!-- Dynamic filters for geography (Radius/Polygons) -->
+                    </div>
                 </div>
 
-                <div class="view-controls-group">
-                    <div class="view-toggles">
-                        <button class="toggle-btn" id="viewListBtn" title="Vista Lista">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <line x1="8" y1="6" x2="21" y2="6"></line>
-                                <line x1="8" y1="12" x2="21" y2="12"></line>
-                                <line x1="8" y1="18" x2="21" y2="18"></line>
-                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                            </svg>
-                        </button>
-                        <button class="toggle-btn active" id="viewGridBtn" title="Vista Cuadrícula">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="14" width="7" height="7"></rect>
-                                <rect x="3" y="14" width="7" height="7"></rect>
-                            </svg>
-                        </button>
+                <div class="gallery-header-row" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="gallery-info" style="margin-bottom:0;">
+                        <span id="totalCount">0 catalogados</span>
+                        <span id="filteredCount" class="hidden"></span>
                     </div>
 
-                    <div class="view-toggles" id="columnControls">
-                        <button class="toggle-btn" data-cols="1">1</button>
-                        <button class="toggle-btn active" data-cols="2">2</button>
-                        <button class="toggle-btn" data-cols="4">4</button>
-                        <button class="toggle-btn" id="toggleFiltersBtn" title="Mostrar/Ocultar Filtros">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                        <button class="toggle-btn" id="expandGalleryBtn" title="Expandir Galería (Esc para salir)">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15 3 21 3 21 9"></polyline>
-                                <polyline points="9 21 3 21 3 15"></polyline>
-                                <line x1="21" y1="3" x2="14" y2="10"></line>
-                                <line x1="3" y1="21" x2="10" y2="14"></line>
-                            </svg>
-                        </button>
+                    <div class="view-controls-group">
+                        <div class="view-toggles">
+                            <button class="toggle-btn" id="viewListBtn" title="Vista Lista">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                </svg>
+                            </button>
+                            <button class="toggle-btn active" id="viewGridBtn" title="Vista Cuadrícula">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="view-toggles" id="columnControls">
+                            <button class="toggle-btn" data-cols="1">1</button>
+                            <button class="toggle-btn active" data-cols="2">2</button>
+                            <button class="toggle-btn" data-cols="4">4</button>
+                            <button class="toggle-btn" id="toggleFiltersBtn" title="Expandir/Contraer Filtros">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                            <button class="toggle-btn" id="expandGalleryBtn" title="Expandir Galería (Alt+G)">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -285,6 +289,14 @@
                     <div class="shortcut-group">
                         <h3>Visor y Navegación</h3>
                         <ul>
+                            <li>
+                                <span>Expandir/Cerrar Galería</span>
+                                <div class="kbd-group"><kbd>Alt</kbd><span>+</span><kbd>G</kbd></div>
+                            </li>
+                            <li>
+                                <span>Cerrar Visor/Galería</span>
+                                <kbd>Esc</kbd>
+                            </li>
                             <li>
                                 <span>Cambiar imagen</span>
                                 <div class="kbd-group"><kbd>←</kbd><kbd>→</kbd></div>
