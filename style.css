@@ -1112,11 +1112,73 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     line-height: 1;
 }
 
-.edit-grid-layout {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+.edit-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
+
+.edit-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: border-color 0.3s ease;
+}
+
+.edit-section:hover {
+    border-color: rgba(0, 242, 254, 0.3);
+}
+
+.edit-section .section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.section-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.2rem;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.edit-modal .form-control {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    padding: 0.7rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.edit-modal .form-control:focus {
+    border-color: var(--accent-primary);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+    outline: none;
+}
+
+.edit-modal textarea.form-control {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+}
+
+.edit-modal textarea[readonly] {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-muted);
+}
+
 
 /* === STATS MODAL CARDS === */
 .stats-card {

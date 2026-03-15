@@ -233,60 +233,97 @@ export default class ModalManager {
         this.currentEditFile = filename;
         const meta = this.metadataManager.getMetadata(filename);
 
-        let html = '<div class="edit-grid-layout">';
+        let html = '<div class="edit-sections-container">';
 
-        // Define fields to edit
-        const fields = [
-            { id: 'mainSubject', label: 'Asunto Principal', type: 'text' },
-            { id: 'author', label: 'Autor', type: 'text' },
-            { id: 'dateRange.start', label: 'Año Inicio', type: 'number' },
-            { id: 'dateRange.end', label: 'Año Fin', type: 'number' },
-            { id: 'reign', label: 'Reinado/Periodo', type: 'text' },
-            { id: 'location', label: 'Ubicación', type: 'text' },
-            { id: 'coordinates.lat', label: 'Latitud', type: 'number', step: 'any' },
-            { id: 'coordinates.lng', label: 'Longitud', type: 'number', step: 'any' },
-            { id: 'type', label: 'Tipo Documento', type: 'select', options: ['Fotografía', 'Grabado', 'Pintura', 'Plano', 'Texto', 'Dibujo'] },
-            { id: 'conservationStatus', label: 'Estado Conservación', type: 'select', options: ['Desaparecido', 'En ruinas', 'Modificado', 'Conservado'] },
-            // Centuries is array, handled as text for simplicity
-            { id: 'centuries', label: 'Siglos (separados por coma)', type: 'text' },
-            { id: 'license', label: 'Licencia', type: 'text' },
-            { id: 'sourceUrl', label: 'Enlace a la fuente', type: 'text' },
-            { id: 'authorUrl', label: 'Referencia Autor', type: 'text' },
-            { id: 'fullPath', label: 'Ruta completa del archivo', type: 'text' },
-            { id: 'notes', label: 'Notas', type: 'textarea', full: true }
+        // Secciones lógicas
+        const sections = [
+            {
+                title: 'Identificación',
+                fields: [
+                    { id: 'mainSubject', label: 'Asunto Principal', type: 'text' },
+                    { id: 'author', label: 'Autor', type: 'text' },
+                    { id: 'type', label: 'Tipo Documento', type: 'select', options: ['Fotografía', 'Grabado', 'Pintura', 'Plano', 'Texto', 'Dibujo', 'Ilustración', 'Infografía 3D', 'Maqueta', 'Recreación Visual'] },
+                    { id: 'conservationStatus', label: 'Estado Conservación', type: 'select', options: ['Desaparecido', 'En ruinas', 'Modificado', 'Conservado', 'Sin clasificar'] }
+                ]
+            },
+            {
+                title: 'Cronología',
+                fields: [
+                    { id: 'dateRange.start', label: 'Año Inicio', type: 'number' },
+                    { id: 'dateRange.end', label: 'Año Fin', type: 'number' },
+                    { id: 'centuries', label: 'Siglos (separados por coma)', type: 'text' }
+                ]
+            },
+            {
+                title: 'Ubicación y Periodo',
+                fields: [
+                    { id: 'location', label: 'Ubicación', type: 'text' },
+                    { id: 'reign', label: 'Reinado/Periodo', type: 'text' },
+                    { id: 'coordinates.lat', label: 'Latitud', type: 'number', step: 'any' },
+                    { id: 'coordinates.lng', label: 'Longitud', type: 'number', step: 'any' }
+                ]
+            },
+            {
+                title: 'Fuentes y Archivo',
+                fields: [
+                    { id: 'sourceUrl', label: 'Enlace a la fuente', type: 'text' },
+                    { id: 'authorUrl', label: 'Referencia Autor', type: 'text' },
+                    { id: 'license', label: 'Licencia', type: 'text' },
+                    { id: 'fullPath', label: 'Ruta completa del archivo', type: 'textarea', rows: 2, readonly: true }
+                ]
+            },
+            {
+                title: 'Notas e Información Adicional',
+                fields: [
+                    { id: 'notes', label: 'Notas', type: 'textarea', full: true, rows: 4 }
+                ]
+            }
         ];
 
-        fields.forEach(field => {
-            let value = '';
-            // Deep access
-            if (field.id.includes('.')) {
-                const parts = field.id.split('.');
-                value = meta[parts[0]] ? meta[parts[0]][parts[1]] : '';
-            } else {
-                value = meta[field.id];
-            }
-            if (field.id === 'centuries') value = (meta.centuries || []).join(', ');
-
+        sections.forEach(section => {
             html += `
-                <div class="form-group ${field.full ? 'full-width' : ''}">
-                    <label class="form-label">${field.label}</label>
+                <div class="edit-section">
+                    <h3 class="section-title">${section.title}</h3>
+                    <div class="section-fields">
             `;
 
-            if (field.type === 'select') {
-                html += `<select class="form-control" data-field="${field.id}">`;
-                html += `<option value="">-- Seleccionar --</option>`;
-                field.options.forEach(opt => {
-                    const selected = value === opt ? 'selected' : '';
-                    html += `<option value="${opt}" ${selected}>${opt}</option>`;
-                });
-                html += `</select>`;
-            } else if (field.type === 'textarea') {
-                html += `<textarea class="form-control" data-field="${field.id}">${value || ''}</textarea>`;
-            } else {
-                html += `<input type="${field.type}" class="form-control" data-field="${field.id}" value="${value || ''}" ${field.step ? `step="${field.step}"` : ''}>`;
-            }
+            section.fields.forEach(field => {
+                let value = '';
+                // Deep access
+                if (field.id.includes('.')) {
+                    const parts = field.id.split('.');
+                    value = meta[parts[0]] ? meta[parts[0]][parts[1]] : '';
+                } else {
+                    value = meta[field.id];
+                }
+                if (field.id === 'centuries') value = (meta.centuries || []).join(', ');
 
-            html += `</div>`;
+                html += `
+                    <div class="form-group ${field.full ? 'full-width' : ''}">
+                        <label class="form-label">${field.label}</label>
+                `;
+
+                if (field.type === 'select') {
+                    html += `<select class="form-control" data-field="${field.id}">`;
+                    html += `<option value="">-- Seleccionar --</option>`;
+                    field.options.forEach(opt => {
+                        const selected = value === opt ? 'selected' : '';
+                        html += `<option value="${opt}" ${selected}>${opt}</option>`;
+                    });
+                    html += `</select>`;
+                } else if (field.type === 'textarea') {
+                    html += `<textarea class="form-control" data-field="${field.id}" ${field.rows ? `rows="${field.rows}"` : ''} ${field.readonly ? 'readonly' : ''}>${value || ''}</textarea>`;
+                } else {
+                    html += `<input type="${field.type}" class="form-control" data-field="${field.id}" value="${value || ''}" ${field.step ? `step="${field.step}"` : ''}>`;
+                }
+
+                html += `</div>`;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
         });
 
         html += '</div>';
@@ -296,6 +333,7 @@ export default class ModalManager {
 
         this.elements.editModalContent.innerHTML = html;
         this.elements.editModal.classList.add('active');
+
 
         // Trigger technical info update if possible (requires image element reference, which we might not have easily here without loading it)
         // For this refactor, we might skip the dynamic image loading for technical info inside edit modal to keep it simple, 
