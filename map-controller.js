@@ -23,10 +23,13 @@ export default class MapController {
             maxZoom: 19
         });
 
-        const texeira = L.tileLayer('https://www.ign.es/wmts/planos?layer=Texeira&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}', {
+        const texeira = L.tileLayer.wms('https://www.ign.es/wms-inspire/planos', {
+            layers: 'Texeira',
+            format: 'image/jpeg',
+            transparent: false,
+            version: '1.3.0',
             attribution: '&copy; Instituto Geográfico Nacional',
-            maxZoom: 20,
-            tms: false
+            maxZoom: 20
         });
 
         this.baseLayers = {
