@@ -441,8 +441,9 @@ function setupGlobalListeners() {
     // Escuchar eventos de actualización en lote disparados desde UIManager
     window.addEventListener('metadataBatchUpdated', (e) => {
         // Al modificar muchos metadatos a la vez, debemos de regenerar filtros
-        // porque puede que ahora pertenezcan a otros siglos, tipos, etc.
-        filterManager.applyFilters();
+        // y FORZAR el refresco de los contadores visuales de los filtros.
+        const currentSearch = document.getElementById('searchInput').value;
+        filterManager.applyFilters(currentSearch, true); 
     });
 }
 
@@ -541,7 +542,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
             statsService.setAllFiles(currentImages);
         }
 
-        document.getElementById('totalCount').textContent = `${currentImages.length} catalogados`;
+        document.getElementById('totalCount').innerHTML = `<b>${currentImages.length}</b> catalogados`;
         filterManager.setImages(currentImages);
         filterManager.renderControllers();
 

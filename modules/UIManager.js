@@ -62,8 +62,10 @@ export default class UIManager {
                 // Pequeña pausa para dejar que el navegador respire
                 requestAnimationFrame(() => renderBatch());
             } else {
-                this.elements.filteredCount.textContent = `${files.length} resultados`;
+                this.elements.filteredCount.innerHTML = `<b>${files.length}</b> resultados`;
                 this.elements.filteredCount.classList.remove('hidden');
+                // IMPORTANTE: Restaurar estilos de selección en los nuevos elementos del DOM
+                this.applySelectionStyles();
             }
         };
 
