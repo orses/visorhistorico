@@ -41,7 +41,7 @@ export default class GeographicFilter extends BaseFilter {
             ` : ''}
         `;
 
-        this.container.innerHTML = this.renderSection('geo', 'GEOGRAFÍA', [], null, {
+        this.container.innerHTML = this.renderSection('GEOGRAFÍA', 'geo', [], null, {
             allLabel: '', // No aplicable aquí
             noneLabel: 'LIMPIAR'
         });

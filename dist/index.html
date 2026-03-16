@@ -5,15 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visor de Colección Histórica</title>
-    <link rel="icon" type="image/png" href="/assets/favicon-DjlnzR0L.png">
+    <link rel="icon" type="image/png" href="./assets/favicon-DjlnzR0L.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
         rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-BRs6hzxa.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BjlRyXdU.css">
-<link rel="manifest" href="/manifest.webmanifest"></head>
+  <script type="module" crossorigin src="./assets/index-BpMegmoC.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-XKMymGih.css">
+<link rel="manifest" href="./manifest.webmanifest"></head>
 
 <body>
     <!-- Header -->
@@ -103,55 +103,75 @@
         <!-- 1. Gallery Panel (Left) -->
         <aside class="gallery-panel">
             <div class="toolbar">
-                <div class="type-filters" id="typeFilters">
-                    <!-- Dynamic filters for type and extension -->
-                </div>
-                <div class="century-filters" id="centuryFilters">
-                    <!-- Dynamic filters -->
-                </div>
-                <div class="conservation-filters" id="conservationFilters">
-                    <!-- Dynamic filters for conservation status -->
-                </div>
-                <div class="positioning-filters" id="positioningFilters">
-                    <!-- Dynamic filters for positioning -->
-                </div>
-                <div class="geographic-filters" id="geographicFilters">
-                    <!-- Dynamic filters for geography (Radius/Polygons) -->
-                </div>
+                <div class="gallery-header-row">
+                    <div class="gallery-info">
+                        <span id="totalCount">0 catalogados</span>
+                        <span id="filteredCount" class="hidden"></span>
+                    </div>
 
-                <div class="gallery-info" style="margin-bottom:0.5rem;">
-                    <span id="totalCount">0 catalogados</span>
-                    <span id="filteredCount" class="hidden"></span>
-                </div>
+                    <div class="view-controls-group">
+                        <div class="view-toggles">
+                            <button class="toggle-btn" id="viewListBtn" title="Vista Lista">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                </svg>
+                            </button>
+                            <button class="toggle-btn active" id="viewGridBtn" title="Vista Cuadrícula">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                </svg>
+                            </button>
+                        </div>
 
-                <div class="view-controls-group">
-                    <div class="view-toggles">
-                        <button class="toggle-btn" id="viewListBtn" title="Vista Lista">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <line x1="8" y1="6" x2="21" y2="6"></line>
-                                <line x1="8" y1="12" x2="21" y2="12"></line>
-                                <line x1="8" y1="18" x2="21" y2="18"></line>
-                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        <div class="view-toggles" id="columnControls">
+                            <button class="toggle-btn" data-cols="1">1</button>
+                            <button class="toggle-btn active" data-cols="2">2</button>
+                            <button class="toggle-btn" data-cols="4">4</button>
+                        </div>
+
+                        <button class="toggle-btn toolbar-action-btn active" id="toggleFiltersBtn" title="Mostrar/Ocultar Filtros">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                             </svg>
                         </button>
-                        <button class="toggle-btn active" id="viewGridBtn" title="Vista Cuadrícula">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="14" width="7" height="7"></rect>
-                                <rect x="3" y="14" width="7" height="7"></rect>
+                        <button class="toggle-btn toolbar-action-btn" id="expandGalleryBtn" title="Expandir Galería (Alt+G)">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
                             </svg>
                         </button>
                     </div>
+                </div>
 
-                    <div class="view-toggles" id="columnControls">
-                        <button class="toggle-btn" data-cols="1">1</button>
-                        <button class="toggle-btn active" data-cols="2">2</button>
-                        <button class="toggle-btn" data-cols="4">4</button>
+                <div id="filtersCollapsible" class="filters-collapsible">
+                    <div class="filters-wrapper">
+                        <div class="type-filters" id="typeFilters">
+                            <!-- Dynamic filters for type and extension -->
+                        </div>
+                        <div class="century-filters" id="centuryFilters">
+                            <!-- Dynamic filters -->
+                        </div>
+                        <div class="conservation-filters" id="conservationFilters">
+                            <!-- Dynamic filters for conservation status -->
+                        </div>
+                        <div class="positioning-filters" id="positioningFilters">
+                            <!-- Dynamic filters for positioning -->
+                        </div>
+                        <div class="geographic-filters" id="geographicFilters">
+                            <!-- Dynamic filters for geography (Radius/Polygons) -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -244,67 +264,102 @@
         </div>
     </div>
 
+    <!-- MODAL DE MÉTODOS ABREVIADOS (Refinado) -->
     <div id="shortcutsModal" class="overlay-backdrop">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Atajos de Teclado</h2>
-                <span class="close-modal-inline" id="closeShortcutsModal">&times;</span>
+                <h2>Métodos Abreviados de Teclado</h2>
+                <span class="close-modal-inline" onclick="document.getElementById('shortcutsModal').classList.remove('active')">&times;</span>
             </div>
             <div class="modal-body">
-                <ul class="shortcuts-list" style="list-style:none; padding:0; margin:0;">
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Buscar</span>
-                        <kbd
-                            style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">/</kbd>
-                    </li>
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Limpiar búsqueda (dentro)</span>
-                        <kbd
-                            style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">Esc</kbd>
-                    </li>
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Guardar los cambios</span>
-                        <div style="display:flex; gap:4px;">
-                            <kbd
-                                style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">Ctrl</kbd>
-                            <span>+</span>
-                            <kbd
-                                style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">G</kbd>
-                        </div>
-                    </li>
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Abrir modal de edición</span>
-                        <div style="display:flex; gap:4px;">
-                            <kbd
-                                style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">Alt</kbd>
-                            <span>+</span>
-                            <kbd
-                                style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">E</kbd>
-                        </div>
-                    </li>
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Cerrar la ventana</span>
-                        <kbd
-                            style="background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border-light); font-family:monospace;">ESC</kbd>
-                    </li>
-                    <li
-                        style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-light);">
-                        <span>Ver la imagen</span>
-                        <span style="font-size:0.9em; opacity:0.8;">Clic en cualquier miniatura de imagen</span>
-                    </li>
-                    <li style="display:flex; justify-content:space-between; padding:8px 0;">
-                        <span>Establecer una ubicación de forma rápida</span>
-                        <span style="font-size:0.9em; opacity:0.8;">Ctrl + Clic en el mapa</span>
-                    </li>
-                </ul>
+                <div class="shortcuts-grid">
+                    <!-- Grupo 1: Búsqueda -->
+                    <div class="shortcut-group">
+                        <h3>Búsqueda</h3>
+                        <ul>
+                            <li>
+                                <span>Enfocar buscador</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>F</kbd></div>
+                            </li>
+                            <li>
+                                <span>Limpiar búsqueda</span>
+                                <kbd>Esc</kbd>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Grupo 2: Navegación -->
+                    <div class="shortcut-group">
+                        <h3>Visor y Navegación</h3>
+                        <ul>
+                            <li>
+                                <span>Expandir/Cerrar Galería</span>
+                                <div class="kbd-group"><kbd>Alt</kbd><span>+</span><kbd>G</kbd></div>
+                            </li>
+                            <li>
+                                <span>Cerrar Visor/Galería</span>
+                                <kbd>Esc</kbd>
+                            </li>
+                            <li>
+                                <span>Cambiar imagen</span>
+                                <div class="kbd-group"><kbd>←</kbd><kbd>→</kbd></div>
+                            </li>
+                            <li>
+                                <span>Zoom progresivo</span>
+                                <div class="kbd-group"><span class="shortcut-desc">Rueda del ratón</span></div>
+                            </li>
+                            <li>
+                                <span>Zoom 100%</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>0</kbd></div>
+                            </li>
+                            <li>
+                                <span>Ajustar a pantalla</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>1</kbd></div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Grupo 3: Selección -->
+                    <div class="shortcut-group">
+                        <h3>Selección y Edición</h3>
+                        <ul>
+                            <li>
+                                <span>Selección múltiple</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic</span></div>
+                            </li>
+                            <li>
+                                <span>Selección en rango</span>
+                                <div class="kbd-group"><kbd>Shift</kbd><span>+</span><span class="shortcut-desc">Clic</span></div>
+                            </li>
+                            <li>
+                                <span>Abrir ficha edición</span>
+                                <div class="kbd-group"><kbd>Alt</kbd><span>+</span><kbd>E</kbd></div>
+                            </li>
+                            <li>
+                                <span>Guardar cambios</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><kbd>G</kbd></div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Grupo 4: Otros -->
+                    <div class="shortcut-group">
+                        <h3>Otros comandos</h3>
+                        <ul>
+                            <li>
+                                <span>Situar en el mapa</span>
+                                <div class="kbd-group"><kbd>Ctrl</kbd><span>+</span><span class="shortcut-desc">Clic Mapa</span></div>
+                            </li>
+                            <li>
+                                <span>Cerrar ventana</span>
+                                <kbd>ESC</kbd>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="closeShortcutsBtn">Cerrar</button>
+                <button class="btn" id="closeShortcutsBtn" onclick="document.getElementById('shortcutsModal').classList.remove('active')">Cerrar</button>
             </div>
         </div>
     </div>

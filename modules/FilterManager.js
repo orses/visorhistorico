@@ -81,4 +81,34 @@ export default class FilterManager {
         // 4. Notify App
         this.onFilterUpdate(galleryFiltered, mapFiltered);
     }
+
+    /**
+     * Actualiza solo los contadores numéricos de los chips existentes sin
+     * destruir el DOM ni perder el estado de selección de los filtros.
+     */
+    updateCounts() {
+        // Actualizar contadores de tipo
+        this._updateChipCounts(this.typeFilter, 'type', v => this.typeFilter.countByType(v));
+        this._updateChipCounts(this.typeFilter, 'ext', v => this.typeFilter.countByExtension(v));
+        // Actualizar contadores de siglo
+        this._updateChipCounts(this.centuryFilter, 'century', v => this.centuryFilter.countByCentury(v));
+        // Actualizar contadores de conservación
+        this._updateChipCounts(this.conservationFilter, 'status', v => this.conservationFilter.countByStatus(v));
+        // Actualizar contadores de posicionamiento
+        this._updateChipCounts(this.positioningFilter, 'val', v => this.positioningFilter.countByPositioning(v));
+    }
+
+    /**
+     * Helper: actualiza el texto de los .chip-count dentro de los chips de un filtro.
+     */
+    _updateChipCounts(filterInstance, dataAttr, countFn) {
+        if (!filterInstance.container) return;
+        filterInstance.container.querySelectorAll(`.chip[data-${dataAttr}]`).forEach(chip => {
+            const value = chip.dataset[dataAttr];
+            const countSpan = chip.querySelector('.chip-count');
+            if (countSpan) {
+                countSpan.textContent = countFn(value);
+            }
+        });
+    }
 }

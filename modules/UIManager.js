@@ -552,8 +552,11 @@ export default class UIManager {
                         <option value="Fotografía">Fotografía</option>
                         <option value="Grabado">Grabado</option>
                         <option value="Ilustración">Ilustración</option>
+                        <option value="Infografía 3D">Infografía 3D</option>
+                        <option value="Maqueta">Maqueta</option>
                         <option value="Pintura">Pintura</option>
                         <option value="Plano">Plano</option>
+                        <option value="Recreación Visual">Recreación Visual</option>
                         <option value="Texto">Texto</option>
                     </select>
                 </div>

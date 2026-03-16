@@ -244,6 +244,16 @@ function setupGlobalListeners() {
         });
     });
 
+    // Toggle Filters visibility (atomic show/hide of entire filter block)
+    document.getElementById('toggleFiltersBtn')?.addEventListener('click', (e) => {
+        const filtersBlock = document.getElementById('filtersCollapsible');
+        const btn = e.target.closest('button');
+        if (!filtersBlock) return;
+        
+        const isHidden = filtersBlock.classList.toggle('collapsed');
+        btn.classList.toggle('active', !isHidden);
+    });
+
     // Expand Gallery
     document.getElementById('expandGalleryBtn')?.addEventListener('click', (e) => {
         const panel = document.querySelector('.gallery-panel');
@@ -253,8 +263,10 @@ function setupGlobalListeners() {
         
         // Al expandir, ocultamos filtros por defecto para que las imágenes sean protagonistas
         if (isExpanded) {
-            panel.classList.remove('show-filters');
-            document.getElementById('toggleFiltersBtn')?.classList.remove('active');
+            const filtersBlock = document.getElementById('filtersCollapsible');
+            const filterBtn = document.getElementById('toggleFiltersBtn');
+            if (filtersBlock) filtersBlock.classList.add('collapsed');
+            if (filterBtn) filterBtn.classList.remove('active');
         }
 
         // Ajustar columnas de la galería si está expandida
@@ -265,27 +277,6 @@ function setupGlobalListeners() {
                 document.querySelectorAll('[data-cols]').forEach(b => b.classList.remove('active'));
                 document.querySelector('[data-cols="4"]')?.classList.add('active');
             }
-        }
-    });
-
-    // Toggle Filters in Expanded Mode (and general collapse)
-    document.getElementById('toggleFiltersBtn')?.addEventListener('click', (e) => {
-        const panel = document.querySelector('.gallery-panel');
-        const btn = e.target.closest('button');
-        
-        // Si estamos en modo expandido, alternamos la clase show-filters
-        if (panel.classList.contains('expanded')) {
-            const isShown = panel.classList.toggle('show-filters');
-            btn.classList.toggle('active', isShown);
-        } else {
-            // Si estamos en modo lateral, contraemos/expandimos todas las secciones
-            const firstSection = document.querySelector('.filter-section');
-            const shouldCollapse = firstSection && !firstSection.classList.contains('collapsed');
-            
-            document.querySelectorAll('.filter-section').forEach(section => {
-                section.classList.toggle('collapsed', shouldCollapse);
-            });
-            btn.classList.toggle('active', !shouldCollapse);
         }
     });
 
@@ -432,8 +423,11 @@ function setupGlobalListeners() {
             if (panel.classList.contains('expanded') && !modalManager.isImageModalOpen() && !modalManager.isEditModalOpen()) {
                 panel.classList.remove('expanded');
                 document.getElementById('expandGalleryBtn')?.classList.remove('active');
-                panel.classList.remove('show-filters');
-                document.getElementById('toggleFiltersBtn')?.classList.remove('active');
+                // Restaurar filtros visibles al salir del modo expandido
+                const filtersBlock = document.getElementById('filtersCollapsible');
+                const filterBtn = document.getElementById('toggleFiltersBtn');
+                if (filtersBlock) filtersBlock.classList.remove('collapsed');
+                if (filterBtn) filterBtn.classList.add('active');
             }
         }
     });
@@ -699,12 +693,12 @@ function refreshUI(filename, fieldAffected = null) {
     // Campos que SI afectan a los filtros y requieren re-filtrar
     const filterFields = ['centuries', 'reign', 'type', 'conservationStatus', 'coordinates.lat', 'coordinates.lng'];
 
-    // Si el campo afectado es uno de los críticos, aplicamos filtros de forma ligera
     if (!fieldAffected || filterFields.some(f => fieldAffected.startsWith(f))) {
         const currentSearch = document.getElementById('searchInput').value;
-        // Solo re-filtramos, pero debemos evitar que esto borre el scroll si es posible
-        // Por ahora, forzamos recarga solo si es necesario
-        filterManager.applyFilters(currentSearch, true); 
+        // Re-filtrar sin destruir el DOM de los filtros (forceRefresh=false)
+        // Solo actualizamos los contadores de los chips
+        filterManager.applyFilters(currentSearch, false);
+        filterManager.updateCounts();
     } else {
         // ACTUALIZACIÓN PARCIAL: Solo el ítem de la galería. NO se pierde el scroll ni el foco.
         uiManager.updateGalleryItem(filename);
