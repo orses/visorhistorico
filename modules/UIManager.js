@@ -45,10 +45,10 @@ export default class UIManager {
 
         // Mostrar contadores inmediatamente
         if (files.length > 0) {
-            this.elements.filteredCount.innerHTML = `<b>${files.length}</b> ver`;
+            this.elements.filteredCount.innerHTML = `<b>${files.length}</b> resultados`;
             this.elements.filteredCount.classList.remove('hidden');
         } else {
-            this.elements.filteredCount.textContent = `0 ver`;
+            this.elements.filteredCount.textContent = `0 resultados`;
             this.elements.filteredCount.classList.add('hidden');
         }
 
