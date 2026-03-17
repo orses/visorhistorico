@@ -361,19 +361,20 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 2px 0;
+    padding: 2px 4px;
     min-height: 28px;
-    gap: 6px;
+    gap: 2px; /* Reducido de 6px para ganar espacio */
 }
 
 .gallery-info {
     display: flex;
     align-items: center;
     gap: 0;
-    font-size: 0.68rem; /* Ultra pequeño */
+    font-size: 0.68rem;
     color: var(--text-muted);
     white-space: nowrap;
-    flex-shrink: 0;
+    flex-shrink: 1; /* Permitir que se ajuste si es necesario */
+    min-width: 0;
 }
 
 .gallery-info b {
@@ -439,7 +440,7 @@ body {
 .view-controls-group {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px; /* Reducido de 3px */
     flex-shrink: 0;
 }
 
@@ -447,7 +448,7 @@ body {
 .toolbar-action-btn {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 4px !important;
-    padding: 5px 8px !important;
+    padding: 4px 5px !important; /* Más compacto */
     transition: all 0.2s ease;
 }
 
@@ -521,7 +522,7 @@ body {
     background: transparent;
     border: none;
     color: var(--text-muted);
-    padding: 4px 8px;
+    padding: 3px 5px; /* Reducido de 4px 8px */
     cursor: pointer;
     border-radius: 2px;
 }
