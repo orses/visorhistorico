@@ -30,16 +30,14 @@ export default class UIManager {
             this._renderContext.cancelled = true;
         }
 
-        // Si la lista es idéntica a la que ya tenemos, solo re-aplicar selección
-        // Comparación ligera O(1): longitud + primer y último elemento
-        if (this._lastFiles
-            && this._lastFiles.length === files.length
-            && this._lastFiles[0] === files[0]
-            && this._lastFiles[this._lastFiles.length - 1] === files[files.length - 1]) {
+        // Comparar con un hash fiable de la lista completa
+        const newHash = files.join('|');
+        if (this._lastFilesHash && this._lastFilesHash === newHash) {
+            // Lista idéntica — solo re-aplicar estilos de selección
             this.applySelectionStyles();
             return;
         }
-        this._lastFiles = [...files];
+        this._lastFilesHash = newHash;
 
         this.elements.galleryGrid.innerHTML = '';
         const context = { cancelled: false };
@@ -56,14 +54,15 @@ export default class UIManager {
             
             for (let i = index; i < end; i++) {
                 const card = this.createGalleryItem(files[i]);
+                // Aplicar selección INMEDIATAMENTE al crear la tarjeta
+                if (this.selectedImages.has(files[i])) {
+                    card.classList.add('selected');
+                }
                 fragment.appendChild(card);
             }
 
             this.elements.galleryGrid.appendChild(fragment);
             index = end;
-
-            // Aplicar estilos de selección en cada batch (no solo al final)
-            this.applySelectionStyles();
 
             if (index < files.length) {
                 requestAnimationFrame(() => renderBatch());
@@ -152,6 +151,12 @@ export default class UIManager {
             }
         } else {
             // Normal click: single selection
+            // Protección: Si hay una selección grande, confirmar antes de borrarla
+            if (this.selectedImages.size >= 5 && !this.selectedImages.has(filename)) {
+                if (!confirm(`Tienes ${this.selectedImages.size} imágenes seleccionadas. ¿Deseas descartar la selección para ver solo esta?`)) {
+                    return;
+                }
+            }
             this.selectedImages.clear();
             this.selectedImages.add(filename);
             this.lastSelectedImage = filename;
@@ -177,16 +182,19 @@ export default class UIManager {
         });
     }
 
-    updateSelection(filenames) {
-        this.selectedImages.clear();
+    updateSelection(filenames, forceSingle = true) {
+        if (forceSingle) {
+            this.selectedImages.clear();
+        }
         
-        // Backward compatibility if single string passed
-        if (typeof filenames === 'string') {
-            this.selectedImages.add(filenames);
-            this.lastSelectedImage = filenames;
-        } else if (Array.isArray(filenames)) {
-            filenames.forEach(f => this.selectedImages.add(f));
-            if (filenames.length > 0) this.lastSelectedImage = filenames[filenames.length - 1];
+        const filesToSelect = Array.isArray(filenames) ? filenames : [filenames];
+        
+        filesToSelect.forEach(f => {
+            if (f) this.selectedImages.add(f);
+        });
+        
+        if (filesToSelect.length > 0) {
+            this.lastSelectedImage = filesToSelect[filesToSelect.length - 1];
         }
 
         this.applySelectionStyles();
@@ -597,7 +605,8 @@ export default class UIManager {
                     return;
                 }
 
-                if (confirm(`¿Aplicar estos cambios a los ${count} elementos seleccionados? Esta acción no se puede deshacer.`)) {
+                // Aplicar cambios directamente (sin diálogo de confirmación)
+                {
                     // Actualizar metadatos y refrescar tarjetas individuales
                     filenames.forEach(f => {
                         this.metadataManager.updateMetadata(f, updates);
@@ -610,7 +619,7 @@ export default class UIManager {
                     
                     // Invalidar caché de galería para forzar re-aplicación de selección
                     // cuando applyFilters vuelva a llamar a renderGallery
-                    this._lastFiles = null;
+                    this._lastFilesHash = null;
                     
                     // Notificar a app.js para re-filtrar y actualizar contadores
                     window.dispatchEvent(new CustomEvent('metadataBatchUpdated', { detail: { files: filenames, updates } }));

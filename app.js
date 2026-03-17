@@ -582,65 +582,85 @@ async function loadImagesFromDirectory(existingHandle = null) {
  * Vite soporta workers como módulos ES nativamente.
  */
 function decodeTiffsInBackground(tiffs) {
-    const worker = new Worker(new URL('./tiff-worker.js', import.meta.url), { type: 'module' });
-    let i = 0;
     const total = tiffs.length;
-    console.log(`Iniciando decodificación de ${total} TIFF en Web Worker…`);
+    if (total === 0) return;
 
-    worker.onmessage = function (e) {
-        const { name, blob, w, h, ok, error } = e.data;
+    // Determinar número de workers (paralelismo)
+    const numWorkers = Math.min(navigator.hardwareConcurrency || 4, 6, total);
+    let currentIndex = 0;
+    let completedCount = 0;
+    
+    console.log(`Iniciando pool de ${numWorkers} workers para ${total} TIFFs…`);
 
-        if (ok) {
-            // Memory Cleanup: Revoke old placeholder if it was a blob
-            const meta = metadataManager.getMetadata(name);
-            if (meta._previewUrl && meta._previewUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(meta._previewUrl);
+    const createWorker = () => {
+        const worker = new Worker(new URL('./tiff-worker.js', import.meta.url), { type: 'module' });
+
+        const processNext = () => {
+            if (currentIndex >= total) {
+                worker.terminate();
+                return;
             }
 
-            const previewUrl = URL.createObjectURL(blob);
-            metadataManager.setVolatileData(name, { _previewUrl: previewUrl, _isProcessing: false });
+            const { name, file } = tiffs[currentIndex++];
+            file.arrayBuffer()
+                .then(buffer => {
+                    worker.postMessage({ name, buffer }, [buffer]);
+                })
+                .catch(err => {
+                    console.warn(`Error al leer ${name}:`, err);
+                    completedCount++;
+                    processNext();
+                });
+        };
 
-            // Update thumbnail in DOM
-            const card = document.querySelector(`[data-filename="${CSS.escape(name)}"]`);
-            if (card) {
-                const imgBox = card.querySelector('.card-image-box');
-                if (imgBox) {
-                    imgBox.innerHTML = `<img src="${previewUrl}" class="card-img" loading="lazy" alt="Preview">`;
+        worker.onmessage = (e) => {
+            const { name, blob, w, h, ok, error } = e.data;
+            completedCount++;
+
+            if (ok) {
+                // Limpieza de memoria: Revocar URL anterior si era un placeholder blob
+                const meta = metadataManager.getMetadata(name);
+                if (meta._previewUrl && meta._previewUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(meta._previewUrl);
                 }
+
+                const previewUrl = URL.createObjectURL(blob);
+                metadataManager.setVolatileData(name, { _previewUrl: previewUrl, _isProcessing: false });
+
+                // Actualizar miniatura en el DOM
+                const card = document.querySelector(`[data-filename="${CSS.escape(name)}"]`);
+                if (card) {
+                    const imgBox = card.querySelector('.card-image-box');
+                    if (imgBox) {
+                        imgBox.innerHTML = `<img src="${previewUrl}" class="card-img" loading="lazy" alt="Preview">`;
+                    }
+                }
+                // console.log(`TIFF [${completedCount}/${total}]: ${name} (${w}×${h})`);
+            } else {
+                console.warn(`TIFF fallido: ${name}`, error);
             }
-            console.log(`TIFF ${i}/${total}: ${name} (${w}×${h})`);
-        } else {
-            console.warn(`TIFF fallido: ${name}`, error);
-        }
 
-        // Send next TIFF to worker
-        sendNext();
+            if (completedCount === total) {
+                uiManager.showToast(`${total} imágenes TIFF procesadas`, 'success');
+                console.log('Decodificación TIFF paralela completada.');
+            }
+
+            processNext();
+        };
+
+        worker.onerror = (err) => {
+            console.error('Error en tiff-worker:', err);
+            completedCount++;
+            processNext();
+        };
+
+        processNext();
     };
 
-    worker.onerror = function (err) {
-        console.error('Error en tiff-worker:', err);
-        sendNext();
-    };
-
-    function sendNext() {
-        if (i >= total) {
-            worker.terminate();
-            uiManager.showToast(`${total} TIFF procesados`, 'success');
-            console.log('Decodificación TIFF completada.');
-            return;
-        }
-
-        const { name, file } = tiffs[i++];
-        file.arrayBuffer().then(buffer => {
-            worker.postMessage({ name, buffer }, [buffer]); // Transfer buffer (zero-copy)
-        }).catch(err => {
-            console.warn(`No se pudo leer: ${name}`, err);
-            sendNext();
-        });
+    // Lanzar la flota de workers con un pequeño decalaje para no saturar el bus principal al arrancar
+    for (let i = 0; i < numWorkers; i++) {
+        setTimeout(createWorker, i * 150);
     }
-
-    // Start after a brief delay to let the gallery finish rendering
-    setTimeout(sendNext, 300);
 }
 
 // MANEJADOR PRINCIPAL DE SELECCIÓN (Single y Lote)
@@ -665,7 +685,8 @@ function handleSelectionChange(primaryFile, allSelected) {
             mapController.focusMarker(primarySelectedImage);
         } else {
             uiManager.showToast('Imagen sin ubicación. Ctrl + Clic en el mapa para situarla', 'normal');
-            mapController.map.panTo([40.4168, -3.7038]);
+            // Ya no movemos el mapa a Madrid (0,0) ni similar para no desorientar al usuario
+            // mapController.map.panTo([40.4168, -3.7038]);
         }
     } else {
         // Múltiples seleccionados
@@ -676,6 +697,21 @@ function handleSelectionChange(primaryFile, allSelected) {
 
 // Wrapper legacy para marcadores (devuelven string simple)
 function selectImage(filename) {
+    // Si ya está seleccionado en una selección múltiple, solo hacemos foco en el mapa
+    if (selectedImagesList.length > 1 && selectedImagesList.includes(filename)) {
+        mapController.focusMarker(filename);
+        return;
+    }
+
+    // Si hay una selección múltiple pero pulsamos un marcador de FUERA de ella, 
+    // por defecto respetamos la selección y solo hacemos foco. 
+    // (Previene pérdida accidental de selección al navegar por el mapa)
+    if (selectedImagesList.length > 1) {
+        mapController.focusMarker(filename);
+        uiManager.showToast('Filtro: Selección mantenida. Pulsa en la galería para cambiarla.', 'normal');
+        return;
+    }
+
     uiManager.updateSelection([filename]);
     // updateSelection dispara el callback handleSelectionChange internamente
 }

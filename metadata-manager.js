@@ -10,6 +10,11 @@ export default class MetadataManager {
 
         // Optimización: Temporizador para guardado debounced
         this.saveTimeout = null;
+
+        // Cachés de rendimiento
+        this._normalizeCache = new Map();  // string → normalizedString
+        this._parseCache = new Map();      // filename → parsedResult
+        this._normalizedIndex = new Map(); // normalizedKey → originalKey (índice de userDatabase)
     }
 
     async init() {
@@ -30,16 +35,20 @@ export default class MetadataManager {
     // Normalización de claves para unificar nombres de archivo (insensible a tildes, prefijos, extensiones y espacios)
     normalizeKey(s) {
         if (!s) return '';
-        return s.toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
-            .replace(/^madrid\s*-\s*/, '') // Quitar prefijo Madrid
-            .replace(/\s+/g, ' ') // Colapsar espacios
-            .replace(/\.(jpg|jpeg|png|webp|tif|tiff|gif|bmp|svg)$/i, '') // Quitar extensión
+        if (this._normalizeCache.has(s)) return this._normalizeCache.get(s);
+        const result = s.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/^madrid\s*-\s*/, '')
+            .replace(/\s+/g, ' ')
+            .replace(/\.(jpg|jpeg|png|webp|tif|tiff|gif|bmp|svg)$/i, '')
             .trim();
+        this._normalizeCache.set(s, result);
+        return result;
     }
 
     // Parsear nombre de archivo según convención
     parseFilename(filename) {
+        if (this._parseCache.has(filename)) return { ...this._parseCache.get(filename) };
         let extractedAuthor = null;
         let authorSource = 'inference';
         let extractedLicense = null;
@@ -238,6 +247,8 @@ export default class MetadataManager {
         // Generar etiquetas automáticas
         metadata.tags = this.generateAutoTags(metadata);
 
+        // Cachear resultado del parseo
+        this._parseCache.set(filename, { ...metadata });
         return metadata;
     }
 
@@ -359,45 +370,44 @@ export default class MetadataManager {
 
 
     // Buscar en la base de datos maestra (JSON) con emparejamiento inteligente
+    /**
+     * Construir el índice normalizado de la base de datos maestra.
+     * Se llama una sola vez al importar o cargar userDatabase.
+     */
+    buildNormalizedIndex() {
+        this._normalizedIndex.clear();
+        for (const key of Object.keys(this.userDatabase)) {
+            const norm = this.normalizeKey(key);
+            if (norm) this._normalizedIndex.set(norm, key);
+        }
+        console.log(`Índice normalizado construido: ${this._normalizedIndex.size} entradas`);
+    }
+
     findInUserDatabase(filename) {
         if (!filename) return null;
-        const normFilename = this.normalizeKey(filename);
-        if (!normFilename) return null;
 
-        // 1. Coincidencia exacta de clave (Prioridad absoluta)
+        // 1. Coincidencia exacta de clave (O(1))
         if (this.userDatabase[filename]) {
-            // console.log(`findInUserDatabase: Coincidencia exacta para '${filename}'`);
             return this.userDatabase[filename];
         }
 
-        // 2. Coincidencia normalizada exacta
-        const allUserKeys = Object.keys(this.userDatabase);
-        let matchKey = allUserKeys.find(key => this.normalizeKey(key) === normFilename);
+        // 2. Coincidencia normalizada vía índice (O(1))
+        const normFilename = this.normalizeKey(filename);
+        if (!normFilename) return null;
 
+        const matchKey = this._normalizedIndex.get(normFilename);
         if (matchKey) {
-            // console.log(`findInUserDatabase: Coincidencia normalizada '${filename}' -> '${matchKey}'`);
             return this.userDatabase[matchKey];
         }
 
-        // 3. Coincidencia por subcadena (si el nombre del archivo contiene la clave del JSON "Apolo")
-        if (!matchKey) {
-            matchKey = allUserKeys.find(key => {
-                const normUserKey = this.normalizeKey(key);
-                // Si la clave del JSON está contenida en el nombre del archivo o viceversa
-                return normUserKey && normUserKey.length > 3 && (normFilename.includes(normUserKey) || normUserKey.includes(normFilename));
-            });
-
-            if (matchKey) {
-                // console.log(`findInUserDatabase: Coincidencia por subcadena '${filename}' -> '${matchKey}'`);
+        // 3. Coincidencia por subcadena (fallback O(n), solo si no hay match directo)
+        for (const [normKey, origKey] of this._normalizedIndex) {
+            if (normKey.length > 3 && (normFilename.includes(normKey) || normKey.includes(normFilename))) {
+                return this.userDatabase[origKey];
             }
         }
 
-        if (!matchKey) {
-            // Solo log en el primer archivo para evitar spam
-            // console.log(`findInUserDatabase: Sin coincidencia para '${filename}' (normalizado: '${normFilename}')`);
-        }
-
-        return matchKey ? this.userDatabase[matchKey] : null;
+        return null;
     }
 
     // Aplicar los datos de la base de datos maestra a las entradas existentes (Fusión con Precedencia)
@@ -607,12 +617,14 @@ export default class MetadataManager {
                     await set('coleccion_historia_user_db', this.userDatabase);
                 }
             }
+            this.buildNormalizedIndex();
 
             console.log('Datos cargados:', Object.keys(this.manualEdits).length, 'ediciones manuales,', Object.keys(this.userDatabase).length, 'entradas maestras.');
         } catch (e) {
             console.error('Error al cargar datos IDB:', e);
             this.manualEdits = {};
             this.userDatabase = {};
+            this.buildNormalizedIndex();
         }
     }
 
@@ -656,6 +668,8 @@ export default class MetadataManager {
                 }
             }
 
+            this.buildNormalizedIndex();
+            
             console.log(`importFromJSON: ${count} entradas cargadas en userDatabase`);
             console.log('Primer entrada:', Object.keys(this.userDatabase)[0]);
             console.log('Datos primera entrada:', this.userDatabase[Object.keys(this.userDatabase)[0]]);

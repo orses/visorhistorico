@@ -203,12 +203,29 @@ export default class MapController {
 
     // Actualizar todos los marcadores
     updateMarkers(metadataCollection) {
-        this.clearMarkers();
+        const newFilenames = new Set(Object.keys(metadataCollection));
+        const currentFilenames = Object.keys(this.markers);
 
+        // 1. Eliminar marcadores que ya no están en la lista filtrada
+        currentFilenames.forEach(f => {
+            if (!newFilenames.has(f)) {
+                this.markerLayer.removeLayer(this.markers[f]);
+                delete this.markers[f];
+            }
+        });
+
+        // 2. Añadir o actualizar los que sí están
         Object.entries(metadataCollection).forEach(([filename, metadata]) => {
-            // Solo agregar si tiene coordenadas
             if (metadata.coordinates) {
-                this.addMarker(filename, metadata);
+                const marker = this.markers[filename];
+                if (!marker) {
+                    // No existía: añadir
+                    this.addMarker(filename, metadata);
+                } else {
+                    // Ya existía: actualizar posición si ha cambiado (opcional, pero addOrUpdate ya lo hace)
+                    // Por simplicidad y robustez, usamos addOrUpdateMarker que gestiona el reemplazo
+                    this.addOrUpdateMarker(filename, metadata);
+                }
             }
         });
     }
