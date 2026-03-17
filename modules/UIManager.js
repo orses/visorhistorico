@@ -43,7 +43,16 @@ export default class UIManager {
         const context = { cancelled: false };
         this._renderContext = context;
 
-        const batchSize = 20;
+        // Mostrar contadores inmediatamente
+        if (files.length > 0) {
+            this.elements.filteredCount.innerHTML = `<b>${files.length}</b> mostrados`;
+            this.elements.filteredCount.classList.remove('hidden');
+        } else {
+            this.elements.filteredCount.textContent = `0 mostrados`;
+            this.elements.filteredCount.classList.add('hidden');
+        }
+
+        const batchSize = 25; // Ligero aumento de batch para rapidez
         let index = 0;
 
         const renderBatch = async () => {
@@ -66,9 +75,6 @@ export default class UIManager {
 
             if (index < files.length) {
                 requestAnimationFrame(() => renderBatch());
-            } else {
-                this.elements.filteredCount.innerHTML = `<b>${files.length}</b> resultados`;
-                this.elements.filteredCount.classList.remove('hidden');
             }
         };
 
