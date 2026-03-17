@@ -42,7 +42,8 @@ export default class MapController {
         this.map = L.map(this.containerId, {
             center: [40.4168, -3.7038],
             zoom: 13,
-            layers: [osm] // Por defecto mapa convencional
+            layers: [osm], // Por defecto mapa convencional
+            closePopupOnClick: false // No cerrar popups al pinchar fuera (ej. en galería)
         });
 
         // 3. Añadir control de selección de capas
@@ -276,13 +277,17 @@ export default class MapController {
         this.bringToFront(filename);
         const marker = this.markers[filename];
         if (marker) {
-            // Centrar mapa
-            this.map.panTo(marker.getLatLng());
-            
-            // Abrir popup. A veces Leaflet requiere un pequeño frame para asegurar que el panTo no lo cierre
-            setTimeout(() => {
-                marker.openPopup();
-            }, 100);
+            // Si usamos Marker Cluster, debemos asegurar que el marcador sea visible
+            if (this.markerLayer && typeof this.markerLayer.zoomToShowLayer === 'function') {
+                this.markerLayer.zoomToShowLayer(marker, () => {
+                    // Una vez visible tras la animación del cluster, abrir popup
+                    setTimeout(() => marker.openPopup(), 100);
+                });
+            } else {
+                // Comportamiento estándar sin clusters
+                this.map.panTo(marker.getLatLng());
+                setTimeout(() => marker.openPopup(), 150);
+            }
         }
     }
 
