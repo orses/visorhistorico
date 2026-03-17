@@ -161,43 +161,42 @@ body {
 
 /* Chips */
 .chip {
-    padding: 6px 12px;
+    padding: 3px 8px;
     background: #1e1e24;
-    border: 1px solid #3d3d45;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    color: #e5e7eb;
+    border: 1px solid #2e2e36;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    color: #c8c8d0;
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
 .chip:hover {
-    border-color: #6b7280;
-    background: #2a2a35;
+    border-color: #555;
+    background: #252530;
 }
 
 .chip.active {
-    background: rgba(0, 242, 254, 0.15);
-    border-color: var(--accent-primary);
-    color: white;
-    font-weight: 700;
+    background: rgba(0, 242, 254, 0.08);
+    border-color: rgba(0, 242, 254, 0.35);
+    color: #e8e8ee;
+    font-weight: 600;
 }
 
 .chip-count {
-    font-size: 0.72rem;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 2px 7px;
-    border-radius: 12px;
-    color: var(--accent-primary); /* Número en color acento para legibilidad */
-    font-weight: 800;
+    font-size: 0.62rem;
+    opacity: 0.6;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
 }
 
 .chip.active .chip-count {
-    background: var(--accent-primary);
-    color: #000;
+    color: var(--accent-primary);
+    opacity: 0.8;
 }
 
 /* Tarjetas y Galería */
@@ -335,7 +334,7 @@ body {
 }
 
 .toolbar {
-    padding: 0.75rem 1rem;
+    padding: 0.4rem 0.75rem;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-light);
     display: flex;
@@ -351,24 +350,27 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 4px 0;
-    min-height: 36px;
+    padding: 2px 0;
+    min-height: 28px;
+    gap: 6px;
 }
 
 .gallery-info {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    font-size: 0.8rem;
+    gap: 0.6rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
     white-space: nowrap;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .gallery-info b {
     color: var(--accent-primary);
     font-weight: 700;
-    margin-right: 0.3em;
+    margin-right: 0.2em;
 }
 
 /* Unificación y limpieza de duplicados completada */
@@ -409,16 +411,15 @@ body {
 .filter-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding-bottom: 8px; /* Espacio para que no se pegue al borde al colapsar */
+    gap: 5px;
+    padding-bottom: 6px;
 }
 
 .view-controls-group {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 3px;
+    flex-shrink: 0;
 }
 
 /* Botones de acción del toolbar (filtros, expandir) */
@@ -437,6 +438,26 @@ body {
 
 .toolbar-action-btn:hover {
     background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Indicador de filtros activos (embudo encendido) */
+.toolbar-action-btn.filters-applied {
+    color: var(--accent-primary) !important;
+    border-color: rgba(0, 242, 254, 0.4) !important;
+    background: rgba(0, 242, 254, 0.1) !important;
+    position: relative;
+}
+
+.toolbar-action-btn.filters-applied::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    box-shadow: 0 0 4px var(--accent-primary);
 }
 
 /* Contenedor colapsable de filtros */

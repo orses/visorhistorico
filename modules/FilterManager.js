@@ -81,6 +81,44 @@ export default class FilterManager {
 
         // 4. Notify App
         this.onFilterUpdate(galleryFiltered, mapFiltered);
+
+        // 5. Actualizar indicador visual del botón de filtros
+        this.updateFilterIndicator();
+    }
+
+    /**
+     * Comprueba si algún filtro tiene chips desactivados (filtrado activo).
+     */
+    hasActiveFilters() {
+        const filters = [
+            this.typeFilter,
+            this.centuryFilter,
+            this.conservationFilter,
+            this.positioningFilter
+        ];
+
+        for (const filter of filters) {
+            if (!filter.container) continue;
+            const allChips = filter.container.querySelectorAll('.chip');
+            const activeChips = filter.container.querySelectorAll('.chip.active');
+            if (allChips.length > 0 && activeChips.length < allChips.length) {
+                return true;
+            }
+        }
+
+        // También considerar búsqueda textual como filtro activo
+        if (this.lastQuery && this.lastQuery.trim() !== '') return true;
+
+        return false;
+    }
+
+    /**
+     * Actualiza la clase CSS del botón del embudo según si hay filtros activos.
+     */
+    updateFilterIndicator() {
+        const btn = document.getElementById('toggleFiltersBtn');
+        if (!btn) return;
+        btn.classList.toggle('filters-applied', this.hasActiveFilters());
     }
 
     /**
