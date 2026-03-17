@@ -277,8 +277,13 @@ export default class MapController {
         this.bringToFront(filename);
         const marker = this.markers[filename];
         if (marker) {
+            // Centrar mapa
             this.map.panTo(marker.getLatLng());
-            marker.openPopup();
+            
+            // Abrir popup. A veces Leaflet requiere un pequeño frame para asegurar que el panTo no lo cierre
+            setTimeout(() => {
+                marker.openPopup();
+            }, 100);
         }
     }
 
