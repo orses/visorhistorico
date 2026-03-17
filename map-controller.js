@@ -182,7 +182,6 @@ export default class MapController {
                          data-filename="${filename.replace(/"/g, '&quot;')}" 
                          title="Haz clic para ampliar"
                          onerror="this.style.display='none'">
-                    <div class="popup-zoom-hint">Haga clic para ampliar</div>
                 </div>
                 <div class="popup-body">
                     <div class="popup-title">
