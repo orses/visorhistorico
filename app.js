@@ -434,10 +434,11 @@ function setupGlobalListeners() {
 
     // Escuchar eventos de actualización en lote disparados desde UIManager
     window.addEventListener('metadataBatchUpdated', (e) => {
-        // Al modificar muchos metadatos a la vez, debemos de regenerar filtros
-        // y FORZAR el refresco de los contadores visuales de los filtros.
+        // Re-filtrar SIN destruir el DOM de los filtros (preserva estado de selección)
         const currentSearch = document.getElementById('searchInput').value;
-        filterManager.applyFilters(currentSearch, true); 
+        filterManager.applyFilters(currentSearch, false);
+        // Solo actualizar los contadores numéricos de los chips
+        filterManager.updateCounts();
     });
 }
 

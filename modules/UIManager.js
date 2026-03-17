@@ -30,12 +30,13 @@ export default class UIManager {
             this._renderContext.cancelled = true;
         }
 
-        // Si la lista es idéntica a la que ya tenemos, no hacemos nada drástico
+        // Si la lista es idéntica a la que ya tenemos, solo re-aplicar selección
         // Comparación ligera O(1): longitud + primer y último elemento
         if (this._lastFiles
             && this._lastFiles.length === files.length
             && this._lastFiles[0] === files[0]
             && this._lastFiles[this._lastFiles.length - 1] === files[files.length - 1]) {
+            this.applySelectionStyles();
             return;
         }
         this._lastFiles = [...files];
@@ -61,14 +62,14 @@ export default class UIManager {
             this.elements.galleryGrid.appendChild(fragment);
             index = end;
 
+            // Aplicar estilos de selección en cada batch (no solo al final)
+            this.applySelectionStyles();
+
             if (index < files.length) {
-                // Pequeña pausa para dejar que el navegador respire
                 requestAnimationFrame(() => renderBatch());
             } else {
                 this.elements.filteredCount.innerHTML = `<b>${files.length}</b> resultados`;
                 this.elements.filteredCount.classList.remove('hidden');
-                // IMPORTANTE: Restaurar estilos de selección en los nuevos elementos del DOM
-                this.applySelectionStyles();
             }
         };
 
@@ -597,23 +598,32 @@ export default class UIManager {
                 }
 
                 if (confirm(`¿Aplicar estos cambios a los ${count} elementos seleccionados? Esta acción no se puede deshacer.`)) {
-                    // Propagamos los cambios uno a uno sin llamar a onMetadataUpdate local 
-                    // para evitar refrescos excesivos (Toast spam). Pasamos la actualización al padre por evento masivo.
-                    
-                    // Trigger manual loop
+                    // Actualizar metadatos y refrescar tarjetas individuales
                     filenames.forEach(f => {
                         this.metadataManager.updateMetadata(f, updates);
-                        this.updateGalleryItem(f); // Refresco visual ligero del ítem
+                        this.updateGalleryItem(f);
                     });
                     
-                    // Limpiamos los campos visualmente
+                    // Limpiar campos del formulario de lote
                     inputs.forEach(input => input.value = '');
                     this.showToast(`Lote actualizado: ${count} elementos modificados`, 'success');
                     
-                    // Forzamos al app.js a recargar filtros y marcadores si es necesario.
-                    // Para esto creamos un CustomEvent o podemos reusar updateMetadata 
-                    // notificando "lote" pero es más limpio despachar esto.
+                    // Invalidar caché de galería para forzar re-aplicación de selección
+                    // cuando applyFilters vuelva a llamar a renderGallery
+                    this._lastFiles = null;
+                    
+                    // Notificar a app.js para re-filtrar y actualizar contadores
                     window.dispatchEvent(new CustomEvent('metadataBatchUpdated', { detail: { files: filenames, updates } }));
+                    
+                    // Re-aplicar estilos de selección y actualizar panel de lote
+                    requestAnimationFrame(() => {
+                        this.applySelectionStyles();
+                        // Actualizar el panel de lote (botón y estado)
+                        const currentSelection = Array.from(this.selectedImages);
+                        if (currentSelection.length > 1) {
+                            this.renderMultiMetadataPanel(currentSelection);
+                        }
+                    });
                 }
             };
         }
