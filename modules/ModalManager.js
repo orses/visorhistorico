@@ -2,6 +2,7 @@
  * ModalManager
  * Handles all modal interactions (Image, Edit, Stats).
  */
+import { DOCUMENT_TYPES, CONSERVATION_STATUSES } from './constants.js';
 export default class ModalManager {
     constructor(metadataManager, uiManager, statisticsService, exportService, onSaveMetadata) {
         this.metadataManager = metadataManager;
@@ -255,8 +256,8 @@ export default class ModalManager {
                 fields: [
                     { id: 'mainSubject', label: 'Asunto Principal', type: 'text' },
                     { id: 'author', label: 'Autor', type: 'text' },
-                    { id: 'type', label: 'Tipo Documento', type: 'select', options: ['Fotografía', 'Grabado', 'Pintura', 'Plano', 'Texto', 'Dibujo', 'Ilustración', 'Infografía 3D', 'Maqueta', 'Recreación Visual'] },
-                    { id: 'conservationStatus', label: 'Estado Conservación', type: 'select', options: ['Desaparecido', 'En ruinas', 'Modificado', 'Conservado', 'Sin clasificar'] }
+                    { id: 'type', label: 'Tipo Documento', type: 'select', options: DOCUMENT_TYPES },
+                    { id: 'conservationStatus', label: 'Estado Conservación', type: 'select', options: CONSERVATION_STATUSES }
                 ]
             },
             {
@@ -342,7 +343,7 @@ export default class ModalManager {
         html += '</div>';
 
         // Add Technical Info in Modal (read-only)
-        html += `<div id="modalTechnicalInfo" style="margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-light);"></div>`;
+        html += `<div id="modalTechnicalInfo" class="edit-modal-tech-info"></div>`;
 
         this.elements.editModalContent.innerHTML = html;
         this.elements.editModal.classList.add('active');

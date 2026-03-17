@@ -30,6 +30,12 @@
 
     --width-gallery: 380px;
     --width-details: 340px;
+
+    /* Colores de estado de conservación */
+    --status-desaparecido: #888888;
+    --status-en-ruinas: #ff4444;
+    --status-modificado: #ffbb33;
+    --status-conservado: #00C851;
 }
 
 /* --- RESET --- */
@@ -127,24 +133,7 @@ body {
     flex: 1;
 }
 
-.filter-toggle-btn {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    color: var(--text-dim);
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.filter-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-normal);
-}
+/* .filter-toggle-btn → definición única en línea ~407 */
 
 .filter-btn {
     font-size: 0.68rem;
@@ -230,10 +219,7 @@ body {
     object-fit: contain;
 }
 
-.card-info {
-    padding: 1rem;
-    background: #18181e;
-}
+/* .card-info → definición única en línea ~596 */
 
 .search-container {
     position: relative;
@@ -832,12 +818,7 @@ textarea.form-control {
     display: flex;
 }
 
-.large-image-view {
-    max-width: 95%;
-    max-height: 90vh;
-    border-radius: 8px;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-}
+/* .large-image-view → definición única en línea ~1392 */
 
 .close-btn {
     position: absolute;
@@ -919,15 +900,7 @@ textarea.form-control {
     box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
 }
 
-/* LEAFLET POPUP DARK THEME */
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-    background: var(--bg-card);
-    color: var(--text-main);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-}
+/* LEAFLET POPUP DARK THEME — definición única más abajo */
 
 /* --- LEAFLET ACCESSIBLE POPUPS --- */
 .leaflet-popup-content-wrapper {
@@ -1060,20 +1033,7 @@ textarea.form-control {
     transform: translateY(-1px);
 }
 
-.leaflet-container a.leaflet-popup-close-button {
-    color: white !important;
-    padding: 10px !important;
-    font-size: 18px !important;
-    background: rgba(0,0,0,0.3) !important;
-    border-radius: 50% !important;
-    width: 24px !important;
-    height: 24px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 8px !important;
-    z-index: 10;
-}
+/* .leaflet-popup-close-button → definición única más abajo */
 
 .custom-marker-container {
     background: none !important;
@@ -1126,28 +1086,30 @@ textarea.form-control {
     height: 8px;
     border-radius: 50%;
     margin-right: 8px;
+    aspect-ratio: 1;
+    flex-shrink: 0;
 }
 
 /* Colores de estado - Más selectividad para ganar a status-indicator-large */
 .status-desaparecido,
 .status-indicator-large.status-desaparecido {
-    background-color: #888888;
+    background-color: var(--status-desaparecido);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
 .status-en-ruinas {
-    background-color: #ff4444;
+    background-color: var(--status-en-ruinas);
     box-shadow: 0 0 4px rgba(255, 68, 68, 0.4);
 }
 
 .status-modificado {
-    background-color: #ffbb33;
+    background-color: var(--status-modificado);
     box-shadow: 0 0 4px rgba(255, 187, 51, 0.4);
 }
 
 .status-conservado {
-    background-color: #00C851;
+    background-color: var(--status-conservado);
     box-shadow: 0 0 4px rgba(0, 200, 81, 0.4);
 }
 
@@ -1467,10 +1429,7 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     text-shadow: 0 0 5px rgba(255, 0, 255, 0.4);
 }
 
-.status-dot {
-    aspect-ratio: 1;
-    flex-shrink: 0;
-}
+/* .status-dot aspect-ratio/flex-shrink → fusionado con definición principal */
 
 /* Ensure details panel removes header space */
 #metadataPanel .panel-header {
@@ -1594,4 +1553,113 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
 
 #closeShortcutsBtn:hover {
     background: #484f58;
+}
+
+/* === CLASES EXTRAÍDAS DE ESTILOS INLINE === */
+
+/* Panel de detalles — contenedor de imagen */
+.details-image-container {
+    position: relative;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.details-image-container img {
+    max-width: 100%;
+    max-height: 300px;
+    display: block;
+}
+
+/* Edición en lote — cabecera */
+.multi-select-header {
+    background: #1a1a25;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    border: 1px solid var(--accent-primary);
+}
+
+.multi-select-header h3 {
+    color: var(--accent-primary);
+    margin-bottom: 5px;
+}
+
+.multi-select-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.multi-select-warning {
+    font-size: 0.8rem;
+    margin-top: 10px;
+    color: #ff9a9e;
+}
+
+/* Botón aplicar lote */
+.btn-apply-batch {
+    width: 100%;
+    margin-top: 15px;
+    justify-content: center;
+    background: var(--accent-primary);
+    color: #000;
+    font-weight: bold;
+}
+
+/* Enlace fuente — fila con botón */
+.source-url-row {
+    display: flex;
+    gap: 5px;
+}
+
+.source-url-row input {
+    flex: 1;
+}
+
+/* Acciones al pie del panel de detalles */
+.details-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.details-actions .btn {
+    flex: 1;
+    font-size: 0.8rem;
+}
+
+/* Campo ruta de archivo */
+.form-control-filepath {
+    opacity: 0.9;
+    font-family: monospace;
+    font-size: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-light);
+    width: 100%;
+    min-height: 40px;
+    resize: none;
+}
+
+/* Info técnica del modal de edición */
+.edit-modal-tech-info {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light);
+}
+
+/* Info del modal de imagen */
+.modal-image-info {
+    margin-top: 1rem;
+    text-align: center;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }

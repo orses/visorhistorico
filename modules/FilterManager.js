@@ -50,33 +50,34 @@ export default class FilterManager {
             ? this.searchEngine.search(query).map(r => r.filename)
             : [...this.currentImages];
 
-        // 2. Apply Modules
-        const galleryFiltered = candidates.filter(filename => {
-            if (!this.centuryFilter.matches(filename)) return false;
-            if (!this.typeFilter.matches(filename)) return false;
-            if (!this.conservationFilter.matches(filename)) return false;
-            if (!this.positioningFilter.matches(filename)) return false;
-            if (!this.geographicFilter.matches(filename)) return false;
-            return true;
-        });
+        // 2. Apply Modules — bucle único que clasifica en galería y mapa
+        const galleryFiltered = [];
+        const mapFiltered = [];
+
+        for (let i = 0; i < candidates.length; i++) {
+            const filename = candidates[i];
+            // Filtros comunes (compartidos por galería y mapa)
+            if (!this.centuryFilter.matches(filename)) continue;
+            if (!this.typeFilter.matches(filename)) continue;
+            if (!this.conservationFilter.matches(filename)) continue;
+            if (!this.geographicFilter.matches(filename)) continue;
+
+            // Mapa: requiere coordenadas válidas (ignora positioningFilter)
+            const meta = this.metadataManager.getMetadata(filename);
+            if (meta.coordinates && meta.coordinates.lat) {
+                mapFiltered.push(filename);
+            }
+
+            // Galería: también aplica el filtro de posicionamiento
+            if (this.positioningFilter.matches(filename)) {
+                galleryFiltered.push(filename);
+            }
+        }
 
         // Refrescar controladores si se solicita (para actualizar contadores)
         if (forceRefresh) {
             this.renderControllers();
         }
-
-        // 3. Map Data (ignores Positioning Filter "without_coords" case)
-        const mapFiltered = candidates.filter(filename => {
-            if (!this.centuryFilter.matches(filename)) return false;
-            if (!this.typeFilter.matches(filename)) return false;
-            if (!this.conservationFilter.matches(filename)) return false;
-            if (!this.geographicFilter.matches(filename)) return false;
-
-            // Map Logic: Always require connection to map (coords exist)
-            // AND ignore the negative filter 'without_coords'
-            const meta = this.metadataManager.getMetadata(filename);
-            return (meta.coordinates && meta.coordinates.lat);
-        });
 
         // 4. Notify App
         this.onFilterUpdate(galleryFiltered, mapFiltered);

@@ -31,6 +31,8 @@ let currentImages = []; // Master list of filenames
 let filteredImages = []; // Currently filtered/visible filenames
 let selectedImagesList = []; // Array of selected filenames
 let primarySelectedImage = null; // The main focused image
+let pendingDirectoryHandle = null; // Handle de directorio guardado para restaurar sesión
+let searchTimeout = null; // Temporizador de debounce para búsqueda
 
 // --- INITIALIZATION ---
 async function init() {
@@ -133,7 +135,7 @@ async function tryRestoreSession() {
             console.log('Sesión anterior detectada. Esperando permiso del usuario para restaurar...');
             // No podemos pedir permiso automáticamente sin gesto del usuario en algunos navegadores, 
             // pero podemos preparar el botón de carga para que use este handle.
-            window.pendingDirectoryHandle = savedHandle;
+            pendingDirectoryHandle = savedHandle;
             
             // Mostrar un aviso o cambiar el estilo del botón de carga
             const loadBtn = document.getElementById('loadDirBtn');
@@ -162,9 +164,9 @@ async function tryRestoreSession() {
 function setupGlobalListeners() {
     // Load Button
     document.getElementById('loadDirBtn')?.addEventListener('click', async () => {
-        if (window.pendingDirectoryHandle) {
+        if (pendingDirectoryHandle) {
             // Intentar usar el handle guardado
-            const handle = window.pendingDirectoryHandle;
+            const handle = pendingDirectoryHandle;
             
             // Verificar si tenemos permiso
             const options = { mode: 'read' };
@@ -189,8 +191,8 @@ function setupGlobalListeners() {
         const q = e.target.value.trim();
         document.getElementById('clearSearchBtn').classList.toggle('hidden', !q);
 
-        if (window.searchTimeout) clearTimeout(window.searchTimeout);
-        window.searchTimeout = setTimeout(() => filterManager.applyFilters(q), 300);
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => filterManager.applyFilters(q), 300);
     });
 
     document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
@@ -364,17 +366,15 @@ function setupGlobalListeners() {
         }
     };
 
-    // Persistencia de la vista del mapa
-    mapController.map.on('moveend', async () => {
-        const center = mapController.getCenter();
-        const zoom = mapController.getZoom();
-        await set('map_view', { center, zoom });
-    });
-
-    mapController.map.on('zoomend', async () => {
-        const center = mapController.getCenter();
-        const zoom = mapController.getZoom();
-        await set('map_view', { center, zoom });
+    // Persistencia de la vista del mapa (debounced, moveend cubre también zoomend)
+    let mapViewSaveTimeout = null;
+    mapController.map.on('moveend', () => {
+        if (mapViewSaveTimeout) clearTimeout(mapViewSaveTimeout);
+        mapViewSaveTimeout = setTimeout(async () => {
+            const center = mapController.getCenter();
+            const zoom = mapController.getZoom();
+            await set('map_view', { center, zoom });
+        }, 500);
     });
 
     // Keyboard Shortcuts
@@ -473,7 +473,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
         if (loadBtn) {
             loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cargar</span>`;
             loadBtn.classList.remove('btn-restore-highlight');
-            window.pendingDirectoryHandle = null;
+            pendingDirectoryHandle = null;
         }
 
         metadataManager.suspendSave(); // Avoid 1000+ writes to localStorage

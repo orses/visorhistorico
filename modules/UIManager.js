@@ -2,6 +2,7 @@
  * UIManager
  * Handles Gallery rendering, List/Grid views, and Toasts.
  */
+import { DOCUMENT_TYPES, CONSERVATION_STATUSES } from './constants.js';
 export default class UIManager {
     constructor(metadataManager, onSelectImage) {
         this.metadataManager = metadataManager;
@@ -30,9 +31,11 @@ export default class UIManager {
         }
 
         // Si la lista es idéntica a la que ya tenemos, no hacemos nada drástico
-        // Esto previene el parpadeo constante si applyFilters se llama sin cambios reales
-        if (this._lastFiles && JSON.stringify(this._lastFiles) === JSON.stringify(files)) {
-            console.log('UIManager: Galería idéntica, omitiendo re-renderizado completo.');
+        // Comparación ligera O(1): longitud + primer y último elemento
+        if (this._lastFiles
+            && this._lastFiles.length === files.length
+            && this._lastFiles[0] === files[0]
+            && this._lastFiles[this._lastFiles.length - 1] === files[files.length - 1]) {
             return;
         }
         this._lastFiles = [...files];
@@ -255,8 +258,8 @@ export default class UIManager {
 
         let html = `
             <!-- 1. Imagen (Top absoluto) -->
-            <div class="details-image-container" style="position:relative; margin-bottom:0.5rem; text-align:center; background:#000; border-radius:8px; overflow:hidden; min-height:200px; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Clic para ampliar">
-                <img id="detailsImage" src="${meta._previewUrl || filename}" style="max-width:100%; max-height:300px; display:block;" alt="${meta.mainSubject}">
+            <div class="details-image-container" title="Clic para ampliar">
+                <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${meta.mainSubject}">
             </div>
 
             <!-- 2. Technical Info Row (Debajo de imagen) -->
@@ -333,15 +336,15 @@ export default class UIManager {
                 <div class="details-section-title">Referencias y Archivo</div>
                 <div class="form-group-compact full-width">
                     <label class="form-label">Enlace a la fuente</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" class="form-control form-control-sm" data-field="sourceUrl" value="${val(meta.sourceUrl, '')}" style="flex:1;">
+                    <div class="source-url-row">
+                        <input type="text" class="form-control form-control-sm" data-field="sourceUrl" value="${val(meta.sourceUrl, '')}">
                         ${meta.sourceUrl ? `<a href="${meta.sourceUrl}" target="_blank" class="btn btn-secondary btn-sm" style="padding:0 8px; display:flex; align-items:center;" title="Abrir fuente"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>` : ''}
                     </div>
                 </div>
                 <div class="form-group-compact full-width">
                     <label class="form-label">Referencia del autor</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" class="form-control form-control-sm" data-field="authorUrl" value="${val(meta.authorUrl, '')}" style="flex:1;">
+                    <div class="source-url-row">
+                        <input type="text" class="form-control form-control-sm" data-field="authorUrl" value="${val(meta.authorUrl, '')}">
                         ${meta.authorUrl ? `<a href="${meta.authorUrl}" target="_blank" class="btn btn-secondary btn-sm" style="padding:0 8px; display:flex; align-items:center;" title="Abrir referencia de autor"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>` : ''}
                     </div>
                 </div>
@@ -351,7 +354,7 @@ export default class UIManager {
                 </div>
                 <div class="form-group-compact full-width">
                     <label class="form-label">Ruta completa del archivo</label>
-                    <textarea class="form-control form-control-sm" data-field="fullPath" readonly style="opacity:0.9; font-family:monospace; font-size:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); width:100%; min-height:40px; resize:none;">${val(meta.fullPath || meta._originalPath || meta.path || meta._path || meta.filename, '')}</textarea>
+                    <textarea class="form-control form-control-sm form-control-filepath" data-field="fullPath" readonly>${val(meta.fullPath || meta._originalPath || meta.path || meta._path || meta.filename, '')}</textarea>
                 </div>
             </div>
 
@@ -361,27 +364,14 @@ export default class UIManager {
                      <div class="form-group-compact">
                         <label class="form-label">Conservación</label>
                         <select class="form-control form-control-sm" data-field="conservationStatus">
-                            <option value="Sin clasificar" ${meta.conservationStatus === 'Sin clasificar' || !meta.conservationStatus ? 'selected' : ''}>Sin clasificar</option>
-                            <option value="Desaparecido" ${meta.conservationStatus === 'Desaparecido' ? 'selected' : ''}>Desaparecido</option>
-                            <option value="En ruinas" ${meta.conservationStatus === 'En ruinas' ? 'selected' : ''}>En ruinas</option>
-                            <option value="Modificado" ${meta.conservationStatus === 'Modificado' ? 'selected' : ''}>Modificado</option>
-                            <option value="Conservado" ${meta.conservationStatus === 'Conservado' ? 'selected' : ''}>Conservado</option>
+                            ${CONSERVATION_STATUSES.map(s => `<option value="${s}" ${(meta.conservationStatus === s || (!meta.conservationStatus && s === 'Sin clasificar')) ? 'selected' : ''}>${s}</option>`).join('')}
                         </select>
                      </div>
                      <div class="form-group-compact">
                         <label class="form-label">Tipo</label>
                         <select class="form-control form-control-sm" data-field="type">
                             <option value="" ${!meta.type ? 'selected' : ''}>-- Seleccionar --</option>
-                            <option value="Dibujo" ${meta.type === 'Dibujo' ? 'selected' : ''}>Dibujo</option>
-                            <option value="Fotografía" ${meta.type === 'Fotografía' ? 'selected' : ''}>Fotografía</option>
-                            <option value="Grabado" ${meta.type === 'Grabado' ? 'selected' : ''}>Grabado</option>
-                            <option value="Ilustración" ${meta.type === 'Ilustración' ? 'selected' : ''}>Ilustración</option>
-                            <option value="Infografía 3D" ${meta.type === 'Infografía 3D' ? 'selected' : ''}>Infografía 3D</option>
-                            <option value="Maqueta" ${meta.type === 'Maqueta' ? 'selected' : ''}>Maqueta</option>
-                            <option value="Pintura" ${meta.type === 'Pintura' ? 'selected' : ''}>Pintura</option>
-                            <option value="Plano" ${meta.type === 'Plano' ? 'selected' : ''}>Plano</option>
-                            <option value="Recreación Visual" ${meta.type === 'Recreación Visual' ? 'selected' : ''}>Recreación Visual</option>
-                            <option value="Texto" ${meta.type === 'Texto' ? 'selected' : ''}>Texto</option>
+                            ${DOCUMENT_TYPES.map(t => `<option value="${t}" ${meta.type === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                      </div>
                 </div>
@@ -392,12 +382,12 @@ export default class UIManager {
                 <textarea class="form-control form-control-sm" data-field="notes" rows="3" style="resize:vertical; font-size:0.8rem;">${val(meta.notes, '')}</textarea>
             </div>
 
-            <div style="margin-top:1.5rem; display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="${meta._previewUrl || filename}" download target="_blank" class="btn btn-secondary" style="flex:1; font-size:0.8rem;">
+            <div class="details-actions">
+                <a href="${meta._previewUrl || filename}" download target="_blank" class="btn btn-secondary">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 
                    Descargar
                 </a>
-                 <a href="#" id="btnOpenOriginal" class="btn btn-secondary" style="flex:1; font-size:0.8rem;">
+                 <a href="#" id="btnOpenOriginal" class="btn btn-secondary">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> 
                    Ver Original
                 </a>
@@ -473,7 +463,11 @@ export default class UIManager {
                 }
             };
 
-            input.addEventListener('blur', saveHandler);
+            input.addEventListener('blur', () => {
+                // Debounce para evitar múltiples escrituras al tabular rápido
+                if (this._blurTimeout) clearTimeout(this._blurTimeout);
+                this._blurTimeout = setTimeout(saveHandler, 300);
+            });
             if (input.tagName === 'SELECT') {
                 input.addEventListener('change', saveHandler);
             }
@@ -503,10 +497,12 @@ export default class UIManager {
 
     // --- TOAST ---
     showToast(msg, type = 'normal') {
+        // Cancelar toast anterior si existía
+        if (this._toastTimeout) clearTimeout(this._toastTimeout);
         this.elements.toastMessage.textContent = msg;
         this.elements.toast.style.borderColor = type === 'error' ? '#ff4757' : '#00ffa3';
         this.elements.toast.classList.add('show');
-        setTimeout(() => this.elements.toast.classList.remove('show'), 3000);
+        this._toastTimeout = setTimeout(() => this.elements.toast.classList.remove('show'), 3000);
     }
 
     setOpenOriginalCallback(callback) {
@@ -523,10 +519,10 @@ export default class UIManager {
         const count = filenames.length;
         
         let html = `
-            <div class="multi-select-header" style="background:#1a1a25; padding:15px; border-radius:8px; margin-bottom:15px; text-align:center; border:1px solid #00f2fe;">
-                <h3 style="color:#00f2fe; margin-bottom:5px;">Edición en Lote</h3>
-                <p style="color:#9ca3af; font-size:0.9rem;">${count} elementos seleccionados</p>
-                <div style="font-size:0.8rem; margin-top:10px; color:#ff9a9e;">
+            <div class="multi-select-header">
+                <h3>Edición en Lote</h3>
+                <p>${count} elementos seleccionados</p>
+                <div class="multi-select-warning">
                     Los valores introducidos a continuación sobreescribirán los existentes en TODOS los elementos seleccionados.
                 </div>
             </div>
@@ -548,16 +544,7 @@ export default class UIManager {
                     <label class="form-label">Tipo de Documento</label>
                     <select class="form-control form-control-sm multi-field" data-field="type">
                         <option value="">-- No modificar --</option>
-                        <option value="Dibujo">Dibujo</option>
-                        <option value="Fotografía">Fotografía</option>
-                        <option value="Grabado">Grabado</option>
-                        <option value="Ilustración">Ilustración</option>
-                        <option value="Infografía 3D">Infografía 3D</option>
-                        <option value="Maqueta">Maqueta</option>
-                        <option value="Pintura">Pintura</option>
-                        <option value="Plano">Plano</option>
-                        <option value="Recreación Visual">Recreación Visual</option>
-                        <option value="Texto">Texto</option>
+                        ${DOCUMENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
                     </select>
                 </div>
 
@@ -565,11 +552,7 @@ export default class UIManager {
                     <label class="form-label">Estado Conservación</label>
                     <select class="form-control form-control-sm multi-field" data-field="conservationStatus">
                         <option value="">-- No modificar --</option>
-                        <option value="Sin clasificar">Sin clasificar</option>
-                        <option value="Desaparecido">Desaparecido</option>
-                        <option value="En ruinas">En ruinas</option>
-                        <option value="Modificado">Modificado</option>
-                        <option value="Conservado">Conservado</option>
+                        ${CONSERVATION_STATUSES.map(s => `<option value="${s}">${s}</option>`).join('')}
                     </select>
                 </div>
 
@@ -578,7 +561,7 @@ export default class UIManager {
                     <input type="text" class="form-control form-control-sm multi-field" data-field="centuries" placeholder="EJ: XIX, XX (Dejar en blanco para no modificar)">
                 </div>
                 
-                <button id="btnApplyMulti" class="btn" style="width:100%; margin-top:15px; justify-content:center; background:#00f2fe; color:#000; font-weight:bold;">
+                <button id="btnApplyMulti" class="btn btn-apply-batch">
                     Aplicar Cambios (${count})
                 </button>
             </div>
