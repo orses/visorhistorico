@@ -187,7 +187,7 @@ export default class MapController {
                 <div class="popup-body">
                     <div class="popup-title">
                         <span class="status-dot ${statusClass}" title="${metadata.conservationStatus || 'Sin clasificar'}"></span>
-                        ${metadata.mainSubject || 'Sin título'}
+                        <span>${metadata.mainSubject || 'Sin título'}</span>
                     </div>
                     ${metadata.location ? `<div class="popup-location">${metadata.location}</div>` : ''}
                     <div class="popup-meta">

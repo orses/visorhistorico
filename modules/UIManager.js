@@ -116,8 +116,13 @@ export default class UIManager {
             <div class="card-info">
                 <div class="card-title" title="${meta.mainSubject}">${meta.mainSubject}</div>
                 <div class="card-meta">
-                    <span>${statusDot}${meta.dateRange?.start || 'S.D.'}</span>
-                    <span>${meta.author || 'Anónimo'}</span>
+                    <div class="card-meta-row">
+                        <span class="card-date">${statusDot}${meta.dateRange?.start || 'S.D.'}</span>
+                        <span class="card-century">${(meta.centuries || []).join(', ')}</span>
+                    </div>
+                    <div class="card-meta-row">
+                        <span class="card-author" title="${meta.author || 'Anónimo'}">${meta.author || 'Anónimo'}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -241,8 +246,13 @@ export default class UIManager {
         const metaEl = card.querySelector('.card-meta');
         if (metaEl) {
             metaEl.innerHTML = `
-                <span><span class="status-dot ${statusClass}" title="${status}"></span>${meta.dateRange?.start || 'S.D.'}</span>
-                <span>${meta.author || 'Anónimo'}</span>
+                <div class="card-meta-row">
+                    <span class="card-date"><span class="status-dot ${statusClass}" title="${status}"></span>${meta.dateRange?.start || 'S.D.'}</span>
+                    <span class="card-century">${(meta.centuries || []).join(', ')}</span>
+                </div>
+                <div class="card-meta-row">
+                    <span class="card-author" title="${meta.author || 'Anónimo'}">${meta.author || 'Anónimo'}</span>
+                </div>
             `;
         }
     }
