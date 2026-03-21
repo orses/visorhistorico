@@ -181,6 +181,13 @@ export default class MapController {
             if (metadata._previewUrl) this._showMarkerHoverPreview(marker, metadata);
         });
         marker.on('mouseout', () => this._hideMarkerHoverPreview());
+        marker.on('dragstart', () => {
+            clearTimeout(this._markerHoverTimeout);
+            if (this._markerHoverPreview) {
+                this._markerHoverPreview.style.opacity = '0';
+                this._markerHoverPreview.style.display = 'none';
+            }
+        });
 
         // Evento de click
         marker.on('click', () => {
