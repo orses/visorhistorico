@@ -116,6 +116,19 @@ export default class MapController {
         this.geoFilterLayer = L.layerGroup().addTo(this.map);
 
         this.notesLayer = L.featureGroup().addTo(this.map);
+        this._notesMinZoom = 15;
+
+        // Mostrar/ocultar notas según zoom
+        const updateNotesVisibility = () => {
+            const z = this.map.getZoom();
+            const container = this.notesLayer.getPane ? null : null;
+            this.notesLayer.eachLayer(l => {
+                const el = l.getElement ? l.getElement() : null;
+                if (el) el.style.visibility = z >= this._notesMinZoom ? '' : 'hidden';
+            });
+        };
+        this.map.on('zoomend', updateNotesVisibility);
+        this._updateNotesVisibility = updateNotesVisibility;
 
         // Habilitar edición de coordenadas por drag
         this.map.on('click', (e) => {
@@ -491,6 +504,9 @@ export default class MapController {
 
         marker.bindPopup(`<button class="note-delete-btn" data-id="${note.id}">Eliminar nota</button>`);
         marker.addTo(this.notesLayer);
+
+        // Aplicar visibilidad inicial según zoom actual
+        if (this._updateNotesVisibility) this._updateNotesVisibility();
     }
 
 }
