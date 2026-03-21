@@ -16,6 +16,9 @@ import FilterManager from './modules/FilterManager.js';
 import ModalManager from './modules/ModalManager.js';
 import StatisticsService from './modules/services/StatisticsService.js';
 import ExportService from './modules/services/ExportService.js';
+import logger from './modules/logger.js';
+import { decodeTiffsInBackground } from './modules/tiff-decoder.js';
+import { tryRestoreSession } from './modules/session-manager.js';
 
 // --- STATE ---
 let metadataManager;
@@ -27,12 +30,15 @@ let modalManager;
 let statsService;
 let exportService;
 
-let currentImages = []; // Master list of filenames
-let filteredImages = []; // Currently filtered/visible filenames
-let selectedImagesList = []; // Array of selected filenames
-let primarySelectedImage = null; // The main focused image
-let pendingDirectoryHandle = null; // Handle de directorio guardado para restaurar sesión
-let searchTimeout = null; // Temporizador de debounce para búsqueda
+const state = {
+    currentImages: [],
+    filteredImages: [],
+    selectedImagesList: [],
+    primarySelectedImage: null,
+    pendingDirectoryHandle: null,
+    allScannedFiles: [],
+};
+let searchTimeout = null;
 
 // --- INITIALIZATION ---
 async function init() {
@@ -52,7 +58,7 @@ async function init() {
     // mapFiles -> Matches context filters (Century, etc.) but ALWAYS includes valid coordinates (ignores "Sin Coordenadas" restriction)
     filterManager = new FilterManager(metadataManager, searchEngine, (galleryFiles, mapFiles) => {
         // 1. Update Gallery
-        filteredImages = galleryFiles;
+        state.filteredImages = galleryFiles;
         uiManager.renderGallery(galleryFiles);
 
         // 2. Update Map Markers
@@ -95,7 +101,7 @@ async function init() {
     document.addEventListener('click', (e) => {
         const target = e.target;
         const filename = target.dataset.filename;
-        
+
         if (filename && (target.classList.contains('popup-image') || target.classList.contains('popup-action-btn'))) {
             modalManager.openImageModal(filename);
         }
@@ -125,49 +131,16 @@ async function init() {
     uiManager.renderGallery([]);
 
     // Intentar restaurar sesión anterior de forma transparente
-    await tryRestoreSession();
-}
-
-async function tryRestoreSession() {
-    try {
-        const savedHandle = await get('visor_historico_dir_handle');
-        if (savedHandle) {
-            console.log('Sesión anterior detectada. Esperando permiso del usuario para restaurar...');
-            // No podemos pedir permiso automáticamente sin gesto del usuario en algunos navegadores, 
-            // pero podemos preparar el botón de carga para que use este handle.
-            pendingDirectoryHandle = savedHandle;
-            
-            // Mostrar un aviso o cambiar el estilo del botón de carga
-            const loadBtn = document.getElementById('loadDirBtn');
-            if (loadBtn) {
-                loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon></svg>Recuperar Sesión</span>`;
-                loadBtn.title = "Se ha detectado una carpeta cargada anteriormente. Haz clic para restaurar el acceso.";
-                loadBtn.classList.add('btn-restore-highlight');
-            }
-        }
-    } catch (e) {
-        console.warn('Error al intentar recuperar el directorio handle:', e);
-    }
-
-    // Restaurar vista del mapa si existe
-    try {
-        const savedView = await get('map_view');
-        if (savedView && savedView.center && savedView.zoom != null) {
-            console.log('Restaurando vista del mapa:', savedView);
-            mapController.map.setView(savedView.center, savedView.zoom);
-        }
-    } catch (e) {
-        console.warn('Error al restaurar la vista del mapa:', e);
-    }
+    state.pendingDirectoryHandle = await tryRestoreSession(mapController);
 }
 
 function setupGlobalListeners() {
     // Load Button
     document.getElementById('loadDirBtn')?.addEventListener('click', async () => {
-        if (pendingDirectoryHandle) {
+        if (state.pendingDirectoryHandle) {
             // Intentar usar el handle guardado
-            const handle = pendingDirectoryHandle;
-            
+            const handle = state.pendingDirectoryHandle;
+
             // Verificar si tenemos permiso
             const options = { mode: 'read' };
             if (await handle.queryPermission(options) === 'granted') {
@@ -251,7 +224,7 @@ function setupGlobalListeners() {
         const filtersBlock = document.getElementById('filtersCollapsible');
         const btn = e.target.closest('button');
         if (!filtersBlock) return;
-        
+
         const isHidden = filtersBlock.classList.toggle('collapsed');
         btn.classList.toggle('active', !isHidden);
     });
@@ -262,7 +235,7 @@ function setupGlobalListeners() {
         const btn = e.target.closest('button');
         const isExpanded = panel.classList.toggle('expanded');
         btn.classList.toggle('active', isExpanded);
-        
+
         // Al expandir, ocultamos filtros por defecto para que las imágenes sean protagonistas
         if (isExpanded) {
             const filtersBlock = document.getElementById('filtersCollapsible');
@@ -322,10 +295,10 @@ function setupGlobalListeners() {
         metadataManager.updateMetadata(filename, { coordinates: { lat: newPos.lat, lng: newPos.lng } });
 
         // Update Details Panel if this is the primary selected image
-        if (primarySelectedImage === filename) {
+        if (state.primarySelectedImage === filename) {
             const meta = metadataManager.getMetadata(filename);
             // Si hay selección múltiple lo maneja el renderMultipanel (o pasamos)
-            if (selectedImagesList.length <= 1) {
+            if (state.selectedImagesList.length <= 1) {
                 uiManager.renderMetadataPanel(filename, meta);
             }
         }
@@ -340,12 +313,12 @@ function setupGlobalListeners() {
             return; // No seleccionar imagen si estamos en modo radio
         }
 
-        if (primarySelectedImage && e.originalEvent.ctrlKey) {
+        if (state.primarySelectedImage && e.originalEvent.ctrlKey) {
             const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
-            
+
             // Si hay uno solo, o queremos aplicar a todos los seleccionados:
             // Por lógica, arrastrar coordenadas a todos los seleccionados es útil (Lote)
-            selectedImagesList.forEach(file => {
+            state.selectedImagesList.forEach(file => {
                 metadataManager.updateMetadata(file, { coordinates: pos });
                 mapController.addOrUpdateMarker(file, metadataManager.getMetadata(file));
                 refreshUI(file);
@@ -354,15 +327,15 @@ function setupGlobalListeners() {
             // Si estamos filtrando por "Sin Coordenadas", al ponerle una, debe desaparecer de la lista.
             // Para eso reaplicamos filtros.
             filterManager.applyFilters();
-            
+
             // Forzar repintado del panel
-            if (selectedImagesList.length > 1) {
-                uiManager.renderMultiMetadataPanel(selectedImagesList);
+            if (state.selectedImagesList.length > 1) {
+                uiManager.renderMultiMetadataPanel(state.selectedImagesList);
             } else {
-                uiManager.renderMetadataPanel(primarySelectedImage);
+                uiManager.renderMetadataPanel(state.primarySelectedImage);
             }
 
-            uiManager.showToast(`Ubicación asignada a ${selectedImagesList.length} imagen(es)`, 'success');
+            uiManager.showToast(`Ubicación asignada a ${state.selectedImagesList.length} imagen(es)`, 'success');
         }
     };
 
@@ -395,8 +368,8 @@ function setupGlobalListeners() {
         // Alt+E: Abrir Modal de Edición
         if (e.altKey && e.key.toLowerCase() === 'e') {
             e.preventDefault();
-            if (primarySelectedImage) {
-                modalManager.openEditModal(primarySelectedImage);
+            if (state.primarySelectedImage) {
+                modalManager.openEditModal(state.primarySelectedImage);
             } else {
                 uiManager.showToast('Selecciona una imagen primero', 'error');
             }
@@ -443,12 +416,10 @@ function setupGlobalListeners() {
 }
 
 
-let allScannedFiles = []; // For statistics
-
 async function loadImagesFromDirectory(existingHandle = null) {
     try {
         let dirHandle;
-        
+
         if (existingHandle) {
             dirHandle = existingHandle;
         } else {
@@ -459,7 +430,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
                     '• Google Chrome/Edge (versión 86+)\n' +
                     '• Opera (versión 72+)\n\n' +
                     'Firefox no soporta esta API actualmente.');
-                console.error('showDirectoryPicker API no disponible');
+                logger.error('showDirectoryPicker API no disponible');
                 return;
             }
             dirHandle = await window.showDirectoryPicker();
@@ -474,7 +445,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
         if (loadBtn) {
             loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cargar</span>`;
             loadBtn.classList.remove('btn-restore-highlight');
-            pendingDirectoryHandle = null;
+            state.pendingDirectoryHandle = null;
         }
 
         metadataManager.suspendSave(); // Avoid 1000+ writes to localStorage
@@ -489,18 +460,18 @@ async function loadImagesFromDirectory(existingHandle = null) {
             }
         });
 
-        currentImages = [];
-        allScannedFiles = [];
+        state.currentImages = [];
+        state.allScannedFiles = [];
         const pendingTiffs = [];
 
         for await (const entry of dirHandle.values()) {
             if (entry.kind === 'file') {
-                allScannedFiles.push(entry.name);
+                state.allScannedFiles.push(entry.name);
 
                 // Check for JSON Metadata
                 if (entry.name.toLowerCase().endsWith('.json') &&
                     (entry.name.includes('coleccion-historia-metadata') || entry.name === 'metadata.json')) {
-                    console.log('JSON de metadatos detectado:', entry.name);
+                    logger.log('JSON de metadatos detectado:', entry.name);
                     const file = await entry.getFile();
                     const text = await file.text();
                     metadataManager.importFromJSON(text); // Import content automatically
@@ -509,7 +480,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
                 // Only images for gallery
                 if (entry.name.match(/\.(jpg|jpeg|png|webp|tif|tiff)$/i)) {
-                    currentImages.push(entry.name);
+                    state.currentImages.push(entry.name);
 
                     const file = await entry.getFile();
                     const isTiff = /\.(tif|tiff)$/i.test(entry.name);
@@ -534,11 +505,11 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         // Pass only images to stats service for consistency
         if (statsService.setAllFiles) {
-            statsService.setAllFiles(currentImages);
+            statsService.setAllFiles(state.currentImages);
         }
 
-        document.getElementById('totalCount').innerHTML = `<b>${currentImages.length}</b> catalogados`;
-        filterManager.setImages(currentImages);
+        document.getElementById('totalCount').innerHTML = `<b>${state.currentImages.length}</b> catalogados`;
+        filterManager.setImages(state.currentImages);
         filterManager.renderControllers();
 
         metadataManager.resumeSave(); // Re-enable and save once
@@ -546,7 +517,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         // Actualizar marcadores del mapa con todas las imágenes que tienen coordenadas
         const metadataWithCoords = {};
-        currentImages.forEach(filename => {
+        state.currentImages.forEach(filename => {
             const meta = metadataManager.getMetadata(filename);
             if (meta.coordinates && meta.coordinates.lat != null && meta.coordinates.lng != null) {
                 metadataWithCoords[filename] = meta;
@@ -554,159 +525,72 @@ async function loadImagesFromDirectory(existingHandle = null) {
         });
         mapController.updateMarkers(metadataWithCoords);
 
-        uiManager.showToast(`Escaneados ${allScannedFiles.length} archivos | ${currentImages.length} catalogados`, 'success');
+        uiManager.showToast(`Escaneados ${state.allScannedFiles.length} archivos | ${state.currentImages.length} catalogados`, 'success');
 
         // Background TIFF decoding (non-blocking)
-        if (pendingTiffs.length > 0 && typeof UTIF !== 'undefined') {
-            decodeTiffsInBackground(pendingTiffs);
+        if (pendingTiffs.length > 0) {
+            decodeTiffsInBackground(pendingTiffs, { metadataManager, uiManager });
         }
 
     } catch (err) {
         if (err.name === 'AbortError') {
-            console.log('Selección de directorio cancelada por el usuario');
+            logger.log('Selección de directorio cancelada por el usuario');
         } else if (err.name === 'NotAllowedError') {
             uiManager.showToast('Permiso denegado para acceder al directorio', 'error');
-            console.error('NotAllowedError:', err);
+            logger.error('NotAllowedError:', err);
         } else if (err.name === 'SecurityError') {
             uiManager.showToast('Error de seguridad al acceder al directorio', 'error');
-            console.error('SecurityError:', err);
+            logger.error('SecurityError:', err);
         } else {
             uiManager.showToast('Error al cargar el directorio', 'error');
-            console.error('Error al cargar directorio:', err);
+            logger.error('Error al cargar directorio:', err);
         }
     }
 }
 
-/**
- * Decodifica los TIFF pendientes en un Web Worker (hilo separado).
- * Vite soporta workers como módulos ES nativamente.
- */
-function decodeTiffsInBackground(tiffs) {
-    const total = tiffs.length;
-    if (total === 0) return;
-
-    // Determinar número de workers (paralelismo)
-    const numWorkers = Math.min(navigator.hardwareConcurrency || 4, 6, total);
-    let currentIndex = 0;
-    let completedCount = 0;
-    
-    console.log(`Iniciando pool de ${numWorkers} workers para ${total} TIFFs…`);
-
-    const createWorker = () => {
-        const worker = new Worker(new URL('./tiff-worker.js', import.meta.url), { type: 'module' });
-
-        const processNext = () => {
-            if (currentIndex >= total) {
-                worker.terminate();
-                return;
-            }
-
-            const { name, file } = tiffs[currentIndex++];
-            file.arrayBuffer()
-                .then(buffer => {
-                    worker.postMessage({ name, buffer }, [buffer]);
-                })
-                .catch(err => {
-                    console.warn(`Error al leer ${name}:`, err);
-                    completedCount++;
-                    processNext();
-                });
-        };
-
-        worker.onmessage = (e) => {
-            const { name, blob, w, h, ok, error } = e.data;
-            completedCount++;
-
-            if (ok) {
-                // Limpieza de memoria: Revocar URL anterior si era un placeholder blob
-                const meta = metadataManager.getMetadata(name);
-                if (meta._previewUrl && meta._previewUrl.startsWith('blob:')) {
-                    URL.revokeObjectURL(meta._previewUrl);
-                }
-
-                const previewUrl = URL.createObjectURL(blob);
-                metadataManager.setVolatileData(name, { _previewUrl: previewUrl, _isProcessing: false });
-
-                // Actualizar miniatura en el DOM
-                const card = document.querySelector(`[data-filename="${CSS.escape(name)}"]`);
-                if (card) {
-                    const imgBox = card.querySelector('.card-image-box');
-                    if (imgBox) {
-                        imgBox.innerHTML = `<img src="${previewUrl}" class="card-img" loading="lazy" alt="Preview">`;
-                    }
-                }
-                // console.log(`TIFF [${completedCount}/${total}]: ${name} (${w}×${h})`);
-            } else {
-                console.warn(`TIFF fallido: ${name}`, error);
-            }
-
-            if (completedCount === total) {
-                uiManager.showToast(`${total} imágenes TIFF procesadas`, 'success');
-                console.log('Decodificación TIFF paralela completada.');
-            }
-
-            processNext();
-        };
-
-        worker.onerror = (err) => {
-            console.error('Error en tiff-worker:', err);
-            completedCount++;
-            processNext();
-        };
-
-        processNext();
-    };
-
-    // Lanzar la flota de workers con un pequeño decalaje para no saturar el bus principal al arrancar
-    for (let i = 0; i < numWorkers; i++) {
-        setTimeout(createWorker, i * 150);
-    }
-}
 
 // MANEJADOR PRINCIPAL DE SELECCIÓN (Single y Lote)
 function handleSelectionChange(primaryFile, allSelected) {
-    primarySelectedImage = primaryFile;
-    selectedImagesList = allSelected || [];
+    state.primarySelectedImage = primaryFile;
+    state.selectedImagesList = allSelected || [];
 
     // Si vacío
-    if (!primarySelectedImage || selectedImagesList.length === 0) {
+    if (!state.primarySelectedImage || state.selectedImagesList.length === 0) {
         uiManager.elements.metadataContent.innerHTML = '<div style="padding:15px; text-align:center; color:#9ca3af;">Selecciona una imagen para ver sus detalles</div>';
         return;
     }
 
     // Single vs Lote
-    if (selectedImagesList.length === 1) {
-        uiManager.renderMetadataPanel(primarySelectedImage);
+    if (state.selectedImagesList.length === 1) {
+        uiManager.renderMetadataPanel(state.primarySelectedImage);
 
         // Mapa Focus
-        const meta = metadataManager.getMetadata(primarySelectedImage);
+        const meta = metadataManager.getMetadata(state.primarySelectedImage);
         const hasCoords = meta.coordinates && typeof meta.coordinates.lat === 'number';
         if (hasCoords) {
-            mapController.focusMarker(primarySelectedImage);
+            mapController.focusMarker(state.primarySelectedImage);
         } else {
             uiManager.showToast('Imagen sin ubicación. Ctrl + Clic en el mapa para situarla', 'normal');
-            // Ya no movemos el mapa a Madrid (0,0) ni similar para no desorientar al usuario
-            // mapController.map.panTo([40.4168, -3.7038]);
         }
     } else {
         // Múltiples seleccionados
-        uiManager.renderMultiMetadataPanel(selectedImagesList);
-        uiManager.showToast(`${selectedImagesList.length} elementos seleccionados para edición en lote`, 'success');
+        uiManager.renderMultiMetadataPanel(state.selectedImagesList);
+        uiManager.showToast(`${state.selectedImagesList.length} elementos seleccionados para edición en lote`, 'success');
     }
 }
 
 // Wrapper legacy para marcadores (devuelven string simple)
 function selectImage(filename) {
     // Si ya está seleccionado en una selección múltiple, solo hacemos foco en el mapa
-    if (selectedImagesList.length > 1 && selectedImagesList.includes(filename)) {
+    if (state.selectedImagesList.length > 1 && state.selectedImagesList.includes(filename)) {
         mapController.focusMarker(filename);
         return;
     }
 
-    // Si hay una selección múltiple pero pulsamos un marcador de FUERA de ella, 
-    // por defecto respetamos la selección y solo hacemos foco. 
+    // Si hay una selección múltiple pero pulsamos un marcador de FUERA de ella,
+    // por defecto respetamos la selección y solo hacemos foco.
     // (Previene pérdida accidental de selección al navegar por el mapa)
-    if (selectedImagesList.length > 1) {
+    if (state.selectedImagesList.length > 1) {
         mapController.focusMarker(filename);
         uiManager.showToast('Filtro: Selección mantenida. Pulsa en la galería para cambiarla.', 'normal');
         return;
@@ -718,11 +602,11 @@ function selectImage(filename) {
 
 function refreshUI(filename, fieldAffected = null) {
     // 1. Siempre actualizar el panel de detalles si es la seleccionada, O si estamos en lote
-    if (selectedImagesList.includes(filename)) {
-        if (selectedImagesList.length > 1) {
-            uiManager.renderMultiMetadataPanel(selectedImagesList);
+    if (state.selectedImagesList.includes(filename)) {
+        if (state.selectedImagesList.length > 1) {
+            uiManager.renderMultiMetadataPanel(state.selectedImagesList);
         } else {
-            uiManager.renderMetadataPanel(primarySelectedImage);
+            uiManager.renderMetadataPanel(state.primarySelectedImage);
         }
     }
 
@@ -743,13 +627,13 @@ function refreshUI(filename, fieldAffected = null) {
 }
 
 function navigateGallery(direction) {
-    if (!filteredImages || filteredImages.length === 0) return;
-    
+    if (!state.filteredImages || state.filteredImages.length === 0) return;
+
     // El modal manager debe rastrear qué archivo tiene abierto ahora mismo
     const currentFile = modalManager.currentImageFile;
     if (!currentFile) return;
 
-    let idx = filteredImages.indexOf(currentFile);
+    let idx = state.filteredImages.indexOf(currentFile);
     if (idx === -1) {
         // Si no está en la lista filtrada actual (ej. acabamos de filtrar y ya no cumple)
         // buscamos el más próximo o simplemente cerramos/no hacemos nada.
@@ -758,12 +642,12 @@ function navigateGallery(direction) {
 
     idx += direction;
     // Bucle circular
-    if (idx < 0) idx = filteredImages.length - 1;
-    if (idx >= filteredImages.length) idx = 0;
+    if (idx < 0) idx = state.filteredImages.length - 1;
+    if (idx >= state.filteredImages.length) idx = 0;
 
-    const nextFile = filteredImages[idx];
+    const nextFile = state.filteredImages[idx];
     modalManager.openImageModal(nextFile);
-    
+
     // Opcional: sincronizar selección en la parrilla para que el scroll siga al modal
     uiManager.updateSelection([nextFile]);
 }
@@ -771,10 +655,10 @@ function navigateGallery(direction) {
 // Configurar PWA Service Worker
 const updateSW = registerSW({
     onNeedRefresh() {
-        console.log("Nueva versión de la app disponible. Actualiza para ver los cambios.");
+        logger.log("Nueva versión de la app disponible. Actualiza para ver los cambios.");
     },
     onOfflineReady() {
-        console.log("Visor Histórico listo para uso offline.");
+        logger.log("Visor Histórico listo para uso offline.");
     },
 });
 

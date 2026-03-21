@@ -1,5 +1,7 @@
 // ===== GESTOR DE METADATOS =====
 import { get, set } from 'idb-keyval';
+import logger from './modules/logger.js';
+import { getCoordinates } from './modules/MetadataGeocoder.js';
 
 export default class MetadataManager {
     constructor() {
@@ -255,7 +257,7 @@ export default class MetadataManager {
     // Método para optimizar y limpiar metadatos existentes
     optimizeMetadata() {
         let stats = { cleaned: 0, fixedAuthors: 0, fixedReigns: 0, removedBlobs: 0, fixedLocations: 0, fixedLicenses: 0 };
-        console.log("Iniciando optimización de metadatos...");
+        logger.log("Iniciando optimización de metadatos...");
 
         for (const filename of Object.keys(this.metadata)) {
             const meta = this.metadata[filename];
@@ -318,7 +320,7 @@ export default class MetadataManager {
                 modified = true;
             }
 
-            // 2e. LICENCIA 
+            // 2e. LICENCIA
             // Solo si está vacío o contiene basura ("null", "undefined")
             const licenseInvalid = !meta.license || !meta.license.trim() || meta.license === 'null' || meta.license === 'undefined';
             if (licenseInvalid && freshParse.license) {
@@ -334,7 +336,7 @@ export default class MetadataManager {
             this.saveToStorage();
         }
 
-        console.log("Optimización completada:", stats);
+        logger.log("Optimización completada:", stats);
         return stats;
     }
 
@@ -380,7 +382,7 @@ export default class MetadataManager {
             const norm = this.normalizeKey(key);
             if (norm) this._normalizedIndex.set(norm, key);
         }
-        console.log(`Índice normalizado construido: ${this._normalizedIndex.size} entradas`);
+        logger.log(`Índice normalizado construido: ${this._normalizedIndex.size} entradas`);
     }
 
     findInUserDatabase(filename) {
@@ -559,9 +561,9 @@ export default class MetadataManager {
                     cleanManual[key] = rest;
                 }
                 await set('coleccion_historia_edits_manuales', cleanManual);
-                console.log('Ediciones manuales persistidas en IDB (Debounced).');
+                logger.log('Ediciones manuales persistidas en IDB (Debounced).');
             } catch (e) {
-                console.error('Error al guardar ediciones manuales:', e);
+                logger.error('Error al guardar ediciones manuales:', e);
             }
         }, 1000); // 1 segundo de calma antes de escribir en disco
     }
@@ -570,9 +572,9 @@ export default class MetadataManager {
     async saveUserDatabase() {
         try {
             await set('coleccion_historia_user_db', this.userDatabase);
-            console.log('Base de Datos Maestra persistida en IDB.');
+            logger.log('Base de Datos Maestra persistida en IDB.');
         } catch (e) {
-            console.error('Error al guardar la base maestra:', e);
+            logger.error('Error al guardar la base maestra:', e);
         }
     }
 
@@ -593,7 +595,7 @@ export default class MetadataManager {
                     const oldStored = localStorage.getItem('coleccion_historia_metadata');
                     if (oldStored) {
                         const oldMetadata = JSON.parse(oldStored);
-                        console.log('Migrando datos del almacén antiguo...');
+                        logger.log('Migrando datos del almacén antiguo...');
                         for (const key in oldMetadata) {
                             // Solo migramos si parecen datos de usuario o tienen coordenadas/notas
                             const item = oldMetadata[key];
@@ -619,9 +621,9 @@ export default class MetadataManager {
             }
             this.buildNormalizedIndex();
 
-            console.log('Datos cargados:', Object.keys(this.manualEdits).length, 'ediciones manuales,', Object.keys(this.userDatabase).length, 'entradas maestras.');
+            logger.log('Datos cargados:', Object.keys(this.manualEdits).length, 'ediciones manuales,', Object.keys(this.userDatabase).length, 'entradas maestras.');
         } catch (e) {
-            console.error('Error al cargar datos IDB:', e);
+            logger.error('Error al cargar datos IDB:', e);
             this.manualEdits = {};
             this.userDatabase = {};
             this.buildNormalizedIndex();
@@ -648,12 +650,31 @@ export default class MetadataManager {
         URL.revokeObjectURL(url);
     }
 
+    // Validar una entrada individual del JSON importado
+    validateImportedEntry(val) {
+        if (!val || typeof val !== 'object') return false;
+        if (val.dateRange !== undefined) {
+            if (typeof val.dateRange !== 'object') return false;
+            const { start, end } = val.dateRange;
+            if (start !== undefined && start !== null && typeof start !== 'number') return false;
+            if (end !== undefined && end !== null && typeof end !== 'number') return false;
+        }
+        if (val.coordinates !== undefined && val.coordinates !== null) {
+            const { lat, lng } = val.coordinates;
+            if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+        }
+        if (val.centuries !== undefined && !Array.isArray(val.centuries)) return false;
+        if (val.tags !== undefined && !Array.isArray(val.tags)) return false;
+        return true;
+    }
+
     // Importar desde JSON y establecer como Base de Datos Maestra
     importFromJSON(jsonData) {
         try {
             const imported = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-            if (!imported || typeof imported !== 'object') {
-                console.error('importFromJSON: datos inválidos');
+            if (!imported || typeof imported !== 'object' || Array.isArray(imported)) {
+                logger.error('importFromJSON: datos inválidos');
                 return false;
             }
 
@@ -661,18 +682,20 @@ export default class MetadataManager {
             this.userDatabase = {}; // Limpiamos la anterior si se desea un reemplazo total por este nuevo JSON
             let count = 0;
             for (const [key, val] of Object.entries(imported)) {
-                if (val && typeof val === 'object') {
-                    val._isUserMetadata = true;
-                    this.userDatabase[key] = val;
-                    count++;
+                if (!this.validateImportedEntry(val)) {
+                    logger.warn(`importFromJSON: saltando entrada inválida: "${key}"`);
+                    continue;
                 }
+                // Eliminar campos volátiles que no deben persistir en userDatabase
+                const { _previewUrl, _fileSize, _isCacheValid, ...cleanVal } = val;
+                cleanVal._isUserMetadata = true;
+                this.userDatabase[key] = cleanVal;
+                count++;
             }
 
             this.buildNormalizedIndex();
-            
-            console.log(`importFromJSON: ${count} entradas cargadas en userDatabase`);
-            console.log('Primer entrada:', Object.keys(this.userDatabase)[0]);
-            console.log('Datos primera entrada:', this.userDatabase[Object.keys(this.userDatabase)[0]]);
+
+            logger.log(`importFromJSON: ${count} entradas cargadas en userDatabase`);
 
             // 2. Disparar sincronización inmediata con los archivos ya cargados en el visor
             // Invalidar toda la caché para forzar re-fusión con el nuevo JSON
@@ -680,10 +703,10 @@ export default class MetadataManager {
             this.applyUserDatabaseToExisting();
             this.saveUserDatabase(); // Guardar la DB maestra solo aquí
 
-            console.log('Base de Datos Maestra actualizada e integrada.');
+            logger.log('Base de Datos Maestra actualizada e integrada.');
             return true;
         } catch (e) {
-            console.error('Error al importar:', e);
+            logger.error('Error al importar:', e);
             return false;
         }
     }
@@ -765,57 +788,7 @@ export default class MetadataManager {
         return Array.from(tags).sort();
     }
 
-    // Geocodificación básica de ubicaciones conocidas de Madrid
     getCoordinates(location, city = 'Madrid') {
-        if (!location) return null;
-
-        // Si la ciudad NO es Madrid (y no está vacía), no intentar geocodificar en Madrid
-        // Esto evita que "Palacio Real" en Aranjuez se ubique en Madrid
-        if (city && !city.toLowerCase().includes('madrid') && city.trim() !== '') {
-            return null;
-        }
-
-        const loc = location.toLowerCase().replace(/^madrid\s*-\s*/, '');
-
-        const knownLocations = {
-            'Sol, puerta del': { lat: 40.4169, lng: -3.7033 },
-            'Puerta del Sol': { lat: 40.4169, lng: -3.7033 },
-            'Mayor, plaza': { lat: 40.4155, lng: -3.7074 },
-            'Plaza Mayor': { lat: 40.4155, lng: -3.7074 },
-            'Palacio Real': { lat: 40.4180, lng: -3.7143 },
-            'Real, palacio': { lat: 40.4180, lng: -3.7143 },
-            'Cebada, plaza de la de': { lat: 40.4089, lng: -3.7081 },
-            'Alcalá, puerta de': { lat: 40.4201, lng: -3.6885 },
-            'Puerta de Alcalá': { lat: 40.4201, lng: -3.6885 },
-            'Toledo, puerta de': { lat: 40.4065, lng: -3.7085 },
-            'Puerta de Toledo': { lat: 40.4065, lng: -3.7085 },
-            'Prado': { lat: 40.4138, lng: -3.6921 },
-            'Retiro': { lat: 40.4153, lng: -3.6844 },
-            'Cibeles, plaza de': { lat: 40.4189, lng: -3.6936 },
-            'Plaza de Cibeles': { lat: 40.4189, lng: -3.6936 },
-            'Atocha, estación de': { lat: 40.4065, lng: -3.6915 },
-            'Estación de Atocha': { lat: 40.4065, lng: -3.6915 },
-            'Colón, plaza de': { lat: 40.4250, lng: -3.6903 },
-            'España, plaza de': { lat: 40.4239, lng: -3.7122 },
-            'Oriente, plaza de': { lat: 40.4180, lng: -3.7143 },
-            'Callao, plaza de': { lat: 40.4197, lng: -3.7059 },
-            'Cárcel de Corte': { lat: 40.4147, lng: -3.7056 },
-            'Santa Cruz, palacio de': { lat: 40.4147, lng: -3.7056 },
-            'San Gil, cuartel de': { lat: 40.423, lng: -3.712 },
-            'San Gil, real monasterio de': { lat: 40.419, lng: -3.713 }
-        };
-
-        for (const [name, coords] of Object.entries(knownLocations)) {
-            if (loc.includes(name.toLowerCase())) {
-                return { ...coords };
-            }
-        }
-
-        // Coordenadas por defecto (centro de Madrid) solo si estamos en contexto Madrid
-        if (!city || city.toLowerCase().includes('madrid')) {
-            return { lat: 40.4168, lng: -3.7038 };
-        }
-
-        return null;
+        return getCoordinates(location, city);
     }
 }

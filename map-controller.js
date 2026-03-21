@@ -1,4 +1,5 @@
 // ===== CONTROLADOR DE MAPA =====
+import logger from './modules/logger.js';
 
 export default class MapController {
     constructor(containerId) {
@@ -102,7 +103,7 @@ export default class MapController {
             if (nearby) {
                 newPos = nearby;
                 e.target.setLatLng(newPos);
-                console.log(`Snapped to nearby marker!`);
+                logger.log(`Snapped to nearby marker!`);
             }
 
             if (this.onMarkerDrag) {
@@ -162,6 +163,17 @@ export default class MapController {
         });
     }
 
+    // Escapar HTML para prevenir XSS
+    _esc(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // Crear contenido del popup
     createPopupContent(filename, metadata) {
         // Usar previewUrl (blob) si existe, o construir ruta relativa codificada
@@ -179,23 +191,23 @@ export default class MapController {
         return `
             <div class="map-popup-container">
                 <div class="popup-image-wrapper">
-                    <img src="${imgPath}" class="popup-image" 
-                         data-filename="${filename.replace(/"/g, '&quot;')}" 
+                    <img src="${imgPath}" class="popup-image"
+                         data-filename="${this._esc(filename)}"
                          title="Haz clic para ampliar"
                          onerror="this.style.display='none'">
                 </div>
                 <div class="popup-body">
                     <div class="popup-title">
-                        <span class="status-dot ${statusClass}" title="${metadata.conservationStatus || 'Sin clasificar'}"></span>
-                        <span>${metadata.mainSubject || 'Sin título'}</span>
+                        <span class="status-dot ${statusClass}" title="${this._esc(metadata.conservationStatus || 'Sin clasificar')}"></span>
+                        <span>${this._esc(metadata.mainSubject) || 'Sin título'}</span>
                     </div>
-                    ${metadata.location ? `<div class="popup-location">${metadata.location}</div>` : ''}
+                    ${metadata.location ? `<div class="popup-location">${this._esc(metadata.location)}</div>` : ''}
                     <div class="popup-meta">
-                        <span class="popup-date">${dateStr}</span>
-                        ${metadata.centuries.length > 0 ? `<span class="popup-century">${metadata.centuries.join(', ')}</span>` : ''}
+                        <span class="popup-date">${this._esc(dateStr)}</span>
+                        ${metadata.centuries.length > 0 ? `<span class="popup-century">${this._esc(metadata.centuries.join(', '))}</span>` : ''}
                     </div>
-                    ${metadata.author ? `<div class="popup-author"><span>Autor:</span> ${metadata.author}</div>` : ''}
-                    <button class="popup-action-btn" data-filename="${filename.replace(/"/g, '&quot;')}">Ver imagen completa</button>
+                    ${metadata.author ? `<div class="popup-author"><span>Autor:</span> ${this._esc(metadata.author)}</div>` : ''}
+                    <button class="popup-action-btn" data-filename="${this._esc(filename)}">Ver imagen completa</button>
                 </div>
             </div>
         `;

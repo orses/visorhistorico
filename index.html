@@ -16,9 +16,9 @@
 
 <body>
     <!-- Header -->
-    <header class="header">
+    <header class="header" role="banner">
         <div class="header-brand">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#grad1)" stroke-width="2">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#grad1)" stroke-width="2" aria-hidden="true" focusable="false">
                 <defs>
                     <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stop-color="#00f2fe" />
@@ -30,57 +30,62 @@
             <h1 class="title">VISOR<span style="color:var(--accent-primary)">HISTÓRICO</span></h1>
         </div>
 
-        <div class="search-container">
+        <div class="search-container" role="search">
             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
+                stroke-width="2" aria-hidden="true" focusable="false">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por ubicación, año, autor...">
-            <button id="clearSearchBtn" class="search-clear-btn hidden" title="Borrar búsqueda">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <label for="searchInput" class="visually-hidden">Buscar imágenes</label>
+            <input type="search" id="searchInput" class="search-input" placeholder="Buscar por ubicación, año, autor..." aria-label="Buscar imágenes por ubicación, año o autor">
+            <button id="clearSearchBtn" class="search-clear-btn hidden" aria-label="Borrar búsqueda">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
             </button>
         </div>
 
-        <div class="header-controls">
-            <button id="loadDirBtn" class="btn btn-primary" title="Cargar directorio">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <nav class="header-controls" aria-label="Acciones principales">
+            <button id="loadDirBtn" class="btn btn-primary" title="Cargar directorio de imágenes" aria-label="Cargar directorio de imágenes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
                 Cargar
             </button>
-            <button id="importBtn" class="btn btn-secondary" title="Importar JSON">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="importBtn" class="btn btn-secondary" aria-label="Importar metadatos desde JSON">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
+                <span class="visually-hidden">Importar JSON</span>
             </button>
-            <button id="exportBtn" class="btn btn-secondary" title="Exportar JSON">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="exportBtn" class="btn btn-secondary" aria-label="Exportar metadatos a JSON">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
+                <span class="visually-hidden">Exportar JSON</span>
             </button>
-            <button id="statsBtn" class="btn btn-secondary" title="Ver Estadísticas">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="statsBtn" class="btn btn-secondary" aria-label="Ver estadísticas de la colección">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
                     <line x1="12" y1="20" x2="12" y2="4"></line>
                     <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
+                <span class="visually-hidden">Estadísticas</span>
             </button>
-            <button id="optimizeBtn" class="btn btn-secondary" title="Optimizar Datos">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="optimizeBtn" class="btn btn-secondary" aria-label="Optimizar y limpiar metadatos">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
+                <span class="visually-hidden">Optimizar</span>
             </button>
-            <button id="shortcutsBtn" class="btn btn-secondary" title="Atajos de Teclado">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="shortcutsBtn" class="btn btn-secondary" aria-label="Ver atajos de teclado" aria-haspopup="dialog">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                     <line x1="6" y1="8" x2="6" y2="8"></line>
                     <line x1="10" y1="8" x2="10" y2="8"></line>
@@ -92,51 +97,52 @@
                     <line x1="18" y1="12" x2="18" y2="12"></line>
                     <line x1="6" y1="16" x2="18" y2="16"></line>
                 </svg>
+                <span class="visually-hidden">Atajos de teclado</span>
             </button>
-        </div>
+        </nav>
     </header>
 
     <!-- Main Container: 3 Panels -->
     <div class="main-container">
 
         <!-- 1. Gallery Panel (Left) -->
-        <aside class="gallery-panel">
-            <div class="toolbar">
+        <aside class="gallery-panel" aria-label="Galería de imágenes">
+            <div class="toolbar" role="toolbar" aria-label="Controles de la galería">
                 <div class="gallery-header-row">
-                    <div class="gallery-info">
+                    <div class="gallery-info" aria-live="polite" aria-atomic="true">
                         <span id="totalCount">0 tot.</span>
                         <span id="filteredCount" class="hidden"></span>
                     </div>
 
                     <div class="view-controls-group">
-                        <div class="view-toggles">
-                            <button class="toggle-btn" id="viewListBtn" title="Vista Lista">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="view-toggles" role="group" aria-label="Tipo de vista">
+                            <button class="toggle-btn" id="viewListBtn" aria-label="Vista lista" aria-pressed="false">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                     <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line>
                                     <line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
                                 </svg>
                             </button>
-                            <button class="toggle-btn active" id="viewGridBtn" title="Vista Cuadrícula">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="toggle-btn active" id="viewGridBtn" aria-label="Vista cuadrícula" aria-pressed="true">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                     <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
                                     <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
                                 </svg>
                             </button>
                         </div>
 
-                        <div class="view-toggles" id="columnControls">
-                            <button class="toggle-btn" data-cols="1">1</button>
-                            <button class="toggle-btn active" data-cols="2">2</button>
-                            <button class="toggle-btn" data-cols="4">4</button>
+                        <div class="view-toggles" id="columnControls" role="group" aria-label="Número de columnas">
+                            <button class="toggle-btn" data-cols="1" aria-label="1 columna" aria-pressed="false">1</button>
+                            <button class="toggle-btn active" data-cols="2" aria-label="2 columnas" aria-pressed="true">2</button>
+                            <button class="toggle-btn" data-cols="4" aria-label="4 columnas" aria-pressed="false">4</button>
                         </div>
 
-                        <button class="toggle-btn toolbar-action-btn active" id="toggleFiltersBtn" title="Mostrar/Ocultar Filtros">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="toggle-btn toolbar-action-btn active" id="toggleFiltersBtn" aria-label="Mostrar u ocultar filtros" aria-expanded="true" aria-controls="filtersCollapsible">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                             </svg>
                         </button>
-                        <button class="toggle-btn toolbar-action-btn" id="expandGalleryBtn" title="Expandir Galería (Alt+G)">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="toggle-btn toolbar-action-btn" id="expandGalleryBtn" aria-label="Expandir galería (Alt+G)" aria-pressed="false">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                 <polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline>
                                 <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
                             </svg>
@@ -144,50 +150,36 @@
                     </div>
                 </div>
 
-                <div id="filtersCollapsible" class="filters-collapsible">
+                <div id="filtersCollapsible" class="filters-collapsible" aria-label="Filtros">
                     <div class="filters-wrapper">
-                        <div class="type-filters" id="typeFilters">
-                            <!-- Dynamic filters for type and extension -->
-                        </div>
-                        <div class="century-filters" id="centuryFilters">
-                            <!-- Dynamic filters -->
-                        </div>
-                        <div class="conservation-filters" id="conservationFilters">
-                            <!-- Dynamic filters for conservation status -->
-                        </div>
-                        <div class="positioning-filters" id="positioningFilters">
-                            <!-- Dynamic filters for positioning -->
-                        </div>
-                        <div class="geographic-filters" id="geographicFilters">
-                            <!-- Dynamic filters for geography (Radius/Polygons) -->
-                        </div>
+                        <div class="type-filters" id="typeFilters"></div>
+                        <div class="century-filters" id="centuryFilters"></div>
+                        <div class="conservation-filters" id="conservationFilters"></div>
+                        <div class="positioning-filters" id="positioningFilters"></div>
+                        <div class="geographic-filters" id="geographicFilters"></div>
                     </div>
                 </div>
             </div>
 
             <div class="gallery-content">
-
-                <div id="galleryGrid" class="gallery-grid grid-cols-2">
+                <div id="galleryGrid" class="gallery-grid grid-cols-2" role="list" aria-label="Imágenes de la colección">
                     <!-- Gallery Items -->
                 </div>
             </div>
         </aside>
 
         <!-- 2. Map Panel (Center) -->
-        <main class="map-panel">
-            <div id="map"></div>
+        <main class="map-panel" aria-label="Mapa de ubicaciones">
+            <div id="map" role="application" aria-label="Mapa interactivo de Leaflet"></div>
         </main>
 
         <!-- 3. Details Panel (Right) -->
-        <aside class="metadata-panel" id="metadataPanel">
-            <!-- Header removed via CSS/HTML for clean look -->
-
-
+        <aside class="metadata-panel" id="metadataPanel" aria-label="Detalles de la imagen seleccionada">
             <div class="panel-scroll">
                 <div id="metadataContent">
                     <div class="empty-state-details">
                         <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1" width="48"
-                            height="48">
+                            height="48" aria-hidden="true" focusable="false">
                             <image x="2" y="2" width="20" height="20"></image>
                         </svg>
                         <p>Selecciona una imagen</p>
@@ -197,32 +189,32 @@
         </aside>
     </div>
 
-    <!-- Modals -->
-    <div id="imageModal" class="overlay-backdrop">
+    <!-- Modal: Imagen ampliada -->
+    <div id="imageModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle" aria-hidden="true">
         <div class="modal-content" style="background:transparent;box-shadow:none;border:none;">
-            <button class="close-btn" id="closeModalBtn">&times;</button>
+            <h2 id="imageModalTitle" class="visually-hidden">Vista de imagen ampliada</h2>
+            <button class="close-btn" id="closeModalBtn" aria-label="Cerrar visor de imagen">&times;</button>
             <img id="modalImage" class="large-image-view" src="" alt="">
             <div id="modalInfo"
-                style="margin-top:1rem;text-align:center;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.8);"></div>
+                style="margin-top:1rem;text-align:center;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.8);" aria-live="polite"></div>
         </div>
     </div>
 
-    <!-- MODAL DE ESTADÍSTICAS -->
-    <div id="statsModal" class="overlay-backdrop">
+    <!-- Modal: Estadísticas -->
+    <div id="statsModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle" aria-hidden="true">
         <div class="modal-content-large">
             <div class="modal-header">
-                <h2>Estadísticas de la Colección</h2>
-                <span class="close-modal-inline" id="closeStatsModal">&times;</span>
+                <h2 id="statsModalTitle">Estadísticas de la Colección</h2>
+                <button class="close-modal-inline" id="closeStatsModal" aria-label="Cerrar estadísticas">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="statsModalContent"
-                    style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem;">
-                    <!-- Se genera dinámicamente -->
+                    style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem;" aria-live="polite">
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" id="downloadDatasetBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="btn btn-primary" id="downloadDatasetBtn" aria-label="Descargar dataset en formato CSV">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -234,16 +226,15 @@
         </div>
     </div>
 
-    <!-- MODAL DE EDICIÓN COMPLETA -->
-    <div id="editModal" class="overlay-backdrop">
+    <!-- Modal: Edición completa -->
+    <div id="editModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" aria-hidden="true">
         <div class="modal-content-large">
             <div class="modal-header">
-                <h2>Edición Completa de Metadatos</h2>
-                <span class="close-modal-inline" id="closeEditModal">&times;</span>
+                <h2 id="editModalTitle">Edición Completa de Metadatos</h2>
+                <button class="close-modal-inline" id="closeEditModal" aria-label="Cerrar editor de metadatos">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="editModalContent">
-                    <!-- El contenido se generará con JS -->
+                <div id="editModalContent" aria-live="polite">
                 </div>
             </div>
             <div class="modal-footer">
@@ -253,16 +244,15 @@
         </div>
     </div>
 
-    <!-- MODAL DE MÉTODOS ABREVIADOS (Refinado) -->
-    <div id="shortcutsModal" class="overlay-backdrop">
+    <!-- Modal: Atajos de teclado -->
+    <div id="shortcutsModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle" aria-hidden="true">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Métodos Abreviados de Teclado</h2>
-                <span class="close-modal-inline" onclick="document.getElementById('shortcutsModal').classList.remove('active')">&times;</span>
+                <h2 id="shortcutsModalTitle">Métodos Abreviados de Teclado</h2>
+                <button class="close-modal-inline" id="closeShortcutsModalBtn" aria-label="Cerrar atajos de teclado">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="shortcuts-grid">
-                    <!-- Grupo 1: Búsqueda -->
                     <div class="shortcut-group">
                         <h3>Búsqueda</h3>
                         <ul>
@@ -277,7 +267,6 @@
                         </ul>
                     </div>
 
-                    <!-- Grupo 2: Navegación -->
                     <div class="shortcut-group">
                         <h3>Visor y Navegación</h3>
                         <ul>
@@ -308,7 +297,6 @@
                         </ul>
                     </div>
 
-                    <!-- Grupo 3: Selección -->
                     <div class="shortcut-group">
                         <h3>Selección y Edición</h3>
                         <ul>
@@ -331,7 +319,6 @@
                         </ul>
                     </div>
 
-                    <!-- Grupo 4: Otros -->
                     <div class="shortcut-group">
                         <h3>Otros comandos</h3>
                         <ul>
@@ -348,20 +335,21 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn" id="closeShortcutsBtn" onclick="document.getElementById('shortcutsModal').classList.remove('active')">Cerrar</button>
+                <button class="btn" id="closeShortcutsBtn">Cerrar</button>
             </div>
         </div>
     </div>
 
-    <div id="toast" class="toast">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- Toast notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
         <span id="toastMessage">Acción completada</span>
     </div>
 
-    <input type="file" id="importInput" accept=".json" hidden>
+    <input type="file" id="importInput" accept=".json" hidden aria-hidden="true">
 
     <script type="module" src="/app.js"></script>
 </body>
