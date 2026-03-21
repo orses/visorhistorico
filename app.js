@@ -88,7 +88,7 @@ async function init() {
 
     modalManager = new ModalManager(metadataManager, uiManager, statsService, exportService, (filename, updates) => {
         metadataManager.updateMetadata(filename, updates);
-        filterManager.applyFilters(); // Auto-refresh filters (e.g. if Type/Conservation changed)
+        filterManager.applyFilters(null); // Auto-refresh filters preserving active search
         refreshUI(filename);
     });
 
@@ -302,7 +302,7 @@ function setupGlobalListeners() {
         if (confirm('¿Optimizar metadatos?')) {
             const stats = metadataManager.optimizeMetadata();
             uiManager.showToast(`Optimizado: ${stats.cleaned} entradas.`, 'success');
-            filterManager.applyFilters(); // refresh
+            filterManager.applyFilters(null); // refresh preserving active search
         }
     });
 
@@ -322,6 +322,7 @@ function setupGlobalListeners() {
             }
         }
 
+        filterManager.applyFilters(null); // Re-aplica sin borrar la búsqueda activa
         uiManager.showToast('Ubicación actualizada (Arrastrar)', 'success');
     };
 
@@ -345,7 +346,7 @@ function setupGlobalListeners() {
 
             // Si estamos filtrando por "Sin Coordenadas", al ponerle una, debe desaparecer de la lista.
             // Para eso reaplicamos filtros.
-            filterManager.applyFilters();
+            filterManager.applyFilters(null);
 
             // Forzar repintado del panel
             if (state.selectedImagesList.length > 1) {
