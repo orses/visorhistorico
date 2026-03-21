@@ -1,7 +1,6 @@
 // ===== GESTOR DE METADATOS =====
 import { get, set } from 'idb-keyval';
 import logger from './modules/logger.js';
-import { getCoordinates } from './modules/MetadataGeocoder.js';
 
 export default class MetadataManager {
     constructor() {
@@ -585,6 +584,20 @@ export default class MetadataManager {
             const edits = await get('coleccion_historia_edits_manuales');
             if (edits) {
                 this.manualEdits = edits;
+                // MIGRACIÓN: marcar coordenadas preexistentes como de usuario
+                // (anteriores a la flag _userCoords, que fueron puestas manualmente)
+                let migrated = false;
+                for (const key in this.manualEdits) {
+                    const entry = this.manualEdits[key];
+                    if (entry.coordinates && entry._userCoords !== true) {
+                        entry._userCoords = true;
+                        migrated = true;
+                    }
+                }
+                if (migrated) {
+                    await set('coleccion_historia_edits_manuales', this.manualEdits);
+                    logger.log('Migración _userCoords completada');
+                }
             } else {
                 // MIGRACIÓN: Si no hay ediciones nuevas, intentar recuperar de localStorage
                 const storedEdits = localStorage.getItem('coleccion_historia_edits_manuales');
@@ -691,6 +704,10 @@ export default class MetadataManager {
                 // Eliminar campos volátiles que no deben persistir en userDatabase
                 const { _previewUrl, _fileSize, _isCacheValid, ...cleanVal } = val;
                 cleanVal._isUserMetadata = true;
+                // Las coordenadas del JSON se tratan siempre como puestas por el usuario
+                if (cleanVal.coordinates) {
+                    cleanVal._userCoords = true;
+                }
                 this.userDatabase[key] = cleanVal;
                 count++;
             }
@@ -790,7 +807,4 @@ export default class MetadataManager {
         return Array.from(tags).sort();
     }
 
-    getCoordinates(location, city = 'Madrid') {
-        return getCoordinates(location, city);
-    }
 }

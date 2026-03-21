@@ -39,6 +39,7 @@ const state = {
     allScannedFiles: [],
 };
 let searchTimeout = null;
+let noteMode = false;
 
 // --- INITIALIZATION ---
 async function init() {
@@ -48,6 +49,10 @@ async function init() {
 
     // Map controller expects container ID
     mapController = new MapController('map');
+
+    // Load saved map notes
+    const savedNotes = await get('map_notes') || [];
+    mapController.loadNotes(savedNotes);
 
     uiManager = new UIManager(metadataManager, handleSelectionChange);
     statsService = new StatisticsService(metadataManager);
@@ -68,8 +73,8 @@ async function init() {
         const visibleMeta = {};
         mapFiles.forEach(f => {
             const m = metadataManager.getMetadata(f);
-            // Harden check: Ensure lat/lng are valid numbers
-            if (m.coordinates && typeof m.coordinates.lat === 'number' && typeof m.coordinates.lng === 'number') {
+            // Harden check: Ensure lat/lng are valid numbers and coordinates are user-placed
+            if (m.coordinates && typeof m.coordinates.lat === 'number' && typeof m.coordinates.lng === 'number' && m._userCoords === true) {
                 visibleMeta[f] = m;
             }
         });
@@ -113,6 +118,10 @@ async function init() {
 
     // Conectar callback de edición del panel de detalles
     uiManager.setMetadataUpdateCallback((filename, updates) => {
+        // Mark coordinates set via the panel as user-placed
+        if (updates.coordinates) {
+            updates._userCoords = true;
+        }
         metadataManager.updateMetadata(filename, updates);
 
         // Si se actualizaron coordenadas, actualizar marcador en el mapa
@@ -306,12 +315,35 @@ function setupGlobalListeners() {
         }
     });
 
+    // Map Notes Control
+    const NoteControl = L.Control.extend({
+        onAdd() {
+            const btn = L.DomUtil.create('button', 'leaflet-bar note-control-btn');
+            btn.innerHTML = '📝';
+            btn.title = 'Añadir nota al mapa';
+            btn.setAttribute('aria-label', 'Añadir nota al mapa');
+            L.DomEvent.on(btn, 'click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                noteMode = !noteMode;
+                btn.classList.toggle('active', noteMode);
+            });
+            return btn;
+        },
+        onRemove() {}
+    });
+    new NoteControl({ position: 'topleft' }).addTo(mapController.map);
+
+    mapController.onNoteDelete = (id) => {
+        mapController.removeNote(id);
+        saveNotes();
+    };
+
     // Map Events
     mapController.onMarkerClick = (f) => selectImage(f);
 
     // Handle Marker Drag (Updates metadata and UI immediately)
     mapController.onMarkerDrag = (filename, newPos) => {
-        metadataManager.updateMetadata(filename, { coordinates: { lat: newPos.lat, lng: newPos.lng } });
+        metadataManager.updateMetadata(filename, { coordinates: { lat: newPos.lat, lng: newPos.lng }, _userCoords: true });
 
         // Update Details Panel if this is the primary selected image
         if (state.primarySelectedImage === filename) {
@@ -327,6 +359,16 @@ function setupGlobalListeners() {
     };
 
     mapController.onMapClick = (e) => {
+        // Note placement mode
+        if (noteMode) {
+            const text = prompt('Texto de la nota:');
+            if (text && text.trim()) {
+                mapController.addNote(e.latlng.lat, e.latlng.lng, text.trim());
+                saveNotes();
+            }
+            return;
+        }
+
         // Mode GeoFilter Radio
         if (filterManager.geographicFilter.activeMode === 'radius') {
             filterManager.geographicFilter.setActiveCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
@@ -339,7 +381,7 @@ function setupGlobalListeners() {
             // Si hay uno solo, o queremos aplicar a todos los seleccionados:
             // Por lógica, arrastrar coordenadas a todos los seleccionados es útil (Lote)
             state.selectedImagesList.forEach(file => {
-                metadataManager.updateMetadata(file, { coordinates: pos });
+                metadataManager.updateMetadata(file, { coordinates: pos, _userCoords: true });
                 mapController.addOrUpdateMarker(file, metadataManager.getMetadata(file));
                 refreshUI(file);
             });
@@ -420,6 +462,27 @@ function setupGlobalListeners() {
                 e.preventDefault(); e.stopPropagation(); navigateGallery(1);
             } else if (e.key === 'ArrowLeft') {
                 e.preventDefault(); e.stopPropagation(); navigateGallery(-1);
+            }
+        }
+
+        // AvPág / RePág / Inicio / Fin: Navegar por la galería con selección
+        const anyModalOpen = modalManager.isImageModalOpen() || modalManager.isEditModalOpen();
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (!anyModalOpen && activeTag !== 'input' && activeTag !== 'textarea' && state.filteredImages.length > 0) {
+            if (e.key === 'PageDown' || e.key === 'PageUp' || e.key === 'Home' || e.key === 'End') {
+                e.preventDefault();
+                const images = state.filteredImages;
+                const current = state.primarySelectedImage;
+                let idx = current ? images.indexOf(current) : -1;
+                const pageSize = 25;
+
+                if (e.key === 'PageDown') idx = Math.min(idx + pageSize, images.length - 1);
+                else if (e.key === 'PageUp') idx = Math.max(idx - pageSize, 0);
+                else if (e.key === 'Home') idx = 0;
+                else if (e.key === 'End') idx = images.length - 1;
+
+                if (idx < 0) idx = 0;
+                uiManager.updateSelection([images[idx]]);
             }
         }
 
@@ -668,6 +731,10 @@ function navigateGallery(direction) {
 
     // Opcional: sincronizar selección en la parrilla para que el scroll siga al modal
     uiManager.updateSelection([nextFile]);
+}
+
+async function saveNotes() {
+    await set('map_notes', mapController.mapNotes);
 }
 
 // Configurar PWA Service Worker

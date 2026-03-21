@@ -8,9 +8,13 @@ export default class MapController {
         this.markers = {};
         this.markerLayer = null; // This will now be the ClusterGroup
         this.geoFilterLayer = null;
+        this.notesLayer = null;
+        this.mapNotes = [];
         this.baseLayers = {};
         this._markerHoverPreview = null;
         this._markerHoverTimeout = null;
+        this.onNoteDelete = null;
+        this.onNoteAdd = null;
         this.init();
     }
 
@@ -111,10 +115,20 @@ export default class MapController {
         
         this.geoFilterLayer = L.layerGroup().addTo(this.map);
 
+        this.notesLayer = L.featureGroup().addTo(this.map);
+
         // Habilitar edición de coordenadas por drag
         this.map.on('click', (e) => {
             if (this.onMapClick) {
                 this.onMapClick(e);
+            }
+        });
+
+        // Delegated click for note delete buttons (inside Leaflet popups)
+        document.getElementById(this.containerId).addEventListener('click', (e) => {
+            if (e.target.classList.contains('note-delete-btn')) {
+                const id = parseInt(e.target.dataset.id);
+                if (this.onNoteDelete) this.onNoteDelete(id);
             }
         });
     }
@@ -426,6 +440,53 @@ export default class MapController {
 
     clearGeoFilter() {
         this.geoFilterLayer.clearLayers();
+    }
+
+    // --- MAP NOTES ---
+
+    loadNotes(notes) {
+        this.notesLayer.clearLayers();
+        this.mapNotes = Array.isArray(notes) ? [...notes] : [];
+        this.mapNotes.forEach(note => this._addNoteMarker(note));
+    }
+
+    addNote(lat, lng, text) {
+        const note = { id: Date.now(), lat, lng, text };
+        this.mapNotes.push(note);
+        this._addNoteMarker(note);
+        if (this.onNoteAdd) this.onNoteAdd(note);
+        return note;
+    }
+
+    removeNote(id) {
+        const idx = this.mapNotes.findIndex(n => n.id === id);
+        if (idx !== -1) {
+            this.mapNotes.splice(idx, 1);
+        }
+        this.notesLayer.eachLayer(layer => {
+            if (layer._noteId === id) {
+                this.notesLayer.removeLayer(layer);
+            }
+        });
+    }
+
+    _addNoteMarker(note) {
+        const icon = L.divIcon({
+            className: 'note-marker-container',
+            html: '<div class="note-marker-pin">📝</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([note.lat, note.lng], { icon });
+        marker._noteId = note.id;
+
+        const popupContent = `
+            <div class="note-popup-text">${this._esc(note.text)}</div>
+            <button class="note-delete-btn" data-id="${note.id}">Eliminar nota</button>
+        `;
+        marker.bindPopup(popupContent);
+        marker.addTo(this.notesLayer);
     }
 
 }

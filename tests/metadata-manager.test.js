@@ -11,10 +11,6 @@ vi.mock('../modules/logger.js', () => ({
     default: { log: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// Mock MetadataGeocoder
-vi.mock('../modules/MetadataGeocoder.js', () => ({
-    getCoordinates: vi.fn().mockReturnValue(null),
-}));
 
 const { default: MetadataManager } = await import('../metadata-manager.js');
 

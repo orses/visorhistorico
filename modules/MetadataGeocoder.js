@@ -51,9 +51,5 @@ export function getCoordinates(location, city = 'Madrid') {
         }
     }
 
-    if (!city || city.toLowerCase().includes('madrid')) {
-        return { lat: 40.4168, lng: -3.7038 };
-    }
-
     return null;
 }

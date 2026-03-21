@@ -19,7 +19,7 @@ describe('getCoordinates', () => {
 
     it('returns Madrid center for unknown location in Madrid context', () => {
         const coords = getCoordinates('Lugar desconocido', 'Madrid');
-        expect(coords).toMatchObject({ lat: 40.4168, lng: -3.7038 });
+        expect(coords).toBeNull();
     });
 
     it('returns null for unknown location in non-Madrid city', () => {

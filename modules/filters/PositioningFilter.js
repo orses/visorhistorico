@@ -13,7 +13,7 @@ export default class PositioningFilter extends BaseFilter {
     countByPositioning(value) {
         return this.currentImages.filter(filename => {
             const meta = this.metadataManager.getMetadata(filename);
-            const hasCoords = (meta.coordinates && typeof meta.coordinates.lat === 'number');
+            const hasCoords = (meta.coordinates && typeof meta.coordinates.lat === 'number' && meta._userCoords === true);
             if (value === 'with_coords') return hasCoords;
             return !hasCoords;
         }).length;

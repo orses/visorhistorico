@@ -64,7 +64,7 @@ export default class FilterManager {
 
             // Mapa: requiere coordenadas válidas (ignora positioningFilter)
             const meta = this.metadataManager.getMetadata(filename);
-            if (meta.coordinates && meta.coordinates.lat) {
+            if (meta.coordinates && meta.coordinates.lat && meta._userCoords === true) {
                 mapFiltered.push(filename);
             }
 
