@@ -10,6 +10,8 @@ export default class ModalManager {
         this.statisticsService = statisticsService;
         this.exportService = exportService;
         this.onSaveMetadata = onSaveMetadata;
+        this.getFilteredImages = null; // Optional: getter for filtered images list
+        this.getAllImages = null;       // Optional: getter for all current images list
 
         this.elements = {
             imageModal: document.getElementById('imageModal'),
@@ -55,7 +57,16 @@ export default class ModalManager {
         this.elements.closeStatsModal?.addEventListener('click', () => this.closeStatsModal());
         this.elements.closeStatsBtn?.addEventListener('click', () => this.closeStatsModal());
         this.elements.downloadDatasetBtn?.addEventListener('click', () => {
-            const filename = this.exportService.downloadScientificDataset();
+            const filtered = this.getFilteredImages ? this.getFilteredImages() : null;
+            const total = this.getAllImages ? this.getAllImages() : null;
+            let exportFilenames = null;
+            if (filtered && total && filtered.length > 0 && filtered.length < total.length) {
+                const choice = confirm(
+                    `¿Qué deseas descargar?\n\nAceptar → Dataset del filtro actual (${filtered.length} imágenes)\nCancelar → Dataset completo (${total.length} imágenes)`
+                );
+                if (choice) exportFilenames = filtered;
+            }
+            const filename = this.exportService.downloadScientificDataset(exportFilenames);
             this.uiManager.showToast(`Dataset descargado: ${filename}`, 'success');
         });
 

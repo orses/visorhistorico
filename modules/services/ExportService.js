@@ -8,10 +8,20 @@ export default class ExportService {
     }
 
     /**
+     * Generates a CSV string filtered to the given filenames.
+     * @param {string[]} filenames
+     * @returns {string}
+     */
+    generateDatasetForFiles(filenames) {
+        return this.generateScientificDataset(filenames);
+    }
+
+    /**
      * Generates a CSV string from the current metadata.
+     * @param {string[]|null} filenames - If provided, only export these filenames.
      * @returns {string} The CSV content.
      */
-    generateScientificDataset() {
+    generateScientificDataset(filenames = null) {
         const allMetadata = this.metadataManager.getAllMetadata();
 
         // CSV Headers
@@ -38,7 +48,10 @@ export default class ExportService {
         ];
 
         // CSV Rows
-        const rows = Object.entries(allMetadata).map(([filename, meta]) => {
+        const entries = filenames
+            ? Object.entries(allMetadata).filter(([fn]) => filenames.includes(fn))
+            : Object.entries(allMetadata);
+        const rows = entries.map(([filename, meta]) => {
             // Extract extension
             const extMatch = filename.match(/\.(jpg|jpeg|png|webp|tif|tiff|gif|bmp)$/i);
             const extension = extMatch ? extMatch[1].toLowerCase().replace('jpeg', 'jpg') : '';
@@ -90,9 +103,10 @@ export default class ExportService {
 
     /**
      * Triggers the download of the dataset.
+     * @param {string[]|null} filenames - If provided, only export these filenames.
      */
-    downloadScientificDataset() {
-        const csv = this.generateScientificDataset();
+    downloadScientificDataset(filenames = null) {
+        const csv = this.generateScientificDataset(filenames);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
 

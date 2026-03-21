@@ -10,13 +10,89 @@ export default class SearchEngine {
         return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : '';
     }
 
+    // Parse field:value operator tokens from query, return { fieldFilters, remainingQuery }
+    parseFieldOperators(query) {
+        const aliases = {
+            'siglo':        'centuries',
+            'autor':        'author',
+            'tipo':         'type',
+            'ubicacion':    'location',
+            'año':          'year',
+            'conservacion': 'conservationStatus',
+            'reinado':      'reign',
+            'etiqueta':     'tags',
+        };
+        const fieldFilters = [];
+        let remaining = query;
+
+        const operatorRegex = /(\w+):(\S+)/gi;
+        const matches = [...query.matchAll(operatorRegex)];
+        for (const match of matches) {
+            const alias = match[1].toLowerCase();
+            const value = match[2];
+            if (aliases[alias]) {
+                fieldFilters.push({ field: aliases[alias], value: this.normalize(value) });
+                remaining = remaining.replace(match[0], '').trim();
+            }
+        }
+
+        return { fieldFilters, remainingQuery: remaining };
+    }
+
+    // Check if a metadata entry matches all field-level filters
+    matchesFieldFilters(meta, fieldFilters) {
+        for (const { field, value } of fieldFilters) {
+            if (field === 'centuries') {
+                const vals = (meta.centuries || []).map(c => this.normalize(c));
+                if (!vals.some(v => v.includes(value))) return false;
+            } else if (field === 'tags') {
+                const vals = (meta.tags || []).map(t => this.normalize(t));
+                if (!vals.some(v => v.includes(value))) return false;
+            } else if (field === 'year') {
+                const start = meta.dateRange?.start;
+                const end = meta.dateRange?.end;
+                const yr = parseInt(value);
+                if (!isNaN(yr)) {
+                    if (start && end) {
+                        if (yr < start || yr > end) return false;
+                    } else if (start) {
+                        if (String(start) !== value && !this.normalize(String(start)).includes(value)) return false;
+                    } else {
+                        return false;
+                    }
+                }
+            } else {
+                const fieldVal = this.normalize(String(meta[field] || ''));
+                if (!fieldVal.includes(value)) return false;
+            }
+        }
+        return true;
+    }
+
     // Buscar en los metadatos con lógica Booleana (AND, OR, NOT)
     search(query) {
         if (!query) return [];
 
+        // Extract field operators before boolean parsing
+        const { fieldFilters, remainingQuery } = this.parseFieldOperators(query);
+
+        // If only field operators and no remaining text, return all matching field filters
+        const allMetadata = this.metadataManager.getAllMetadata();
+
+        if (!remainingQuery.trim()) {
+            if (fieldFilters.length === 0) return [];
+            const results = [];
+            for (const [filename, meta] of Object.entries(allMetadata)) {
+                if (this.matchesFieldFilters(meta, fieldFilters)) {
+                    results.push({ filename, ...meta });
+                }
+            }
+            return results;
+        }
+
         // Soportar espacios como AND implícito ("A B" -> "A AND B") si no hay operadores explícitos entre palabras sueltas.
         // Paso 1: Normalizar mayúsculas de operadores
-        let q = query.replace(/\b(y|and)\b/gi, ' AND ')
+        let q = remainingQuery.replace(/\b(y|and)\b/gi, ' AND ')
                      .replace(/\b(o|or)\b/gi, ' OR ')
                      .replace(/\b(no|not)\b/gi, ' NOT ');
 
@@ -60,10 +136,14 @@ export default class SearchEngine {
             return terms;
         });
 
-        const allMetadata = this.metadataManager.getAllMetadata();
         const results = [];
 
         for (const [filename, meta] of Object.entries(allMetadata)) {
+            // Apply field-level filters first
+            if (fieldFilters.length > 0 && !this.matchesFieldFilters(meta, fieldFilters)) {
+                continue;
+            }
+
             // Construir texto buscable
             const searchableText = this.normalize([
                 filename, // Incluir nombre de archivo

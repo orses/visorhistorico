@@ -11,6 +11,8 @@ export default class MetadataPanelRenderer {
         this.onMetadataUpdate = null;
         this.onOpenOriginal = null;
         this._blurTimeout = null;
+        this._prevValues = new Map();
+        this._saveStatusTimeout = null;
     }
 
     renderMetadataPanel(filename) {
@@ -32,6 +34,7 @@ export default class MetadataPanelRenderer {
         }
 
         const html = `
+            <div id="saveStatus" class="save-status"></div>
             <div class="details-image-container" title="Clic para ampliar">
                 <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${meta.mainSubject || filename}">
             </div>
@@ -191,6 +194,17 @@ export default class MetadataPanelRenderer {
         this.attachMetadataListeners(filename);
     }
 
+    _showSaveStatus(message) {
+        const el = this.metadataContentEl.querySelector('#saveStatus');
+        if (!el) return;
+        if (this._saveStatusTimeout) clearTimeout(this._saveStatusTimeout);
+        el.textContent = message;
+        el.classList.add('visible');
+        this._saveStatusTimeout = setTimeout(() => {
+            el.classList.remove('visible');
+        }, 2000);
+    }
+
     attachMetadataListeners(filename) {
         const inputs = this.metadataContentEl.querySelectorAll('[data-field]');
 
@@ -200,39 +214,51 @@ export default class MetadataPanelRenderer {
                 const value = input.value;
                 const updates = {};
 
+                // Store old value before saving
+                const currentMeta = this.metadataManager.getMetadata(filename);
+                let oldValue = '';
                 if (field === 'dateRange.start') {
-                    const current = this.metadataManager.getMetadata(filename);
-                    updates.dateRange = { ...current.dateRange, start: value ? parseInt(value) : null };
+                    oldValue = currentMeta.dateRange?.start ?? '';
+                    updates.dateRange = { ...currentMeta.dateRange, start: value ? parseInt(value) : null };
                 } else if (field === 'dateRange.end') {
-                    const current = this.metadataManager.getMetadata(filename);
-                    updates.dateRange = { ...current.dateRange, end: value ? parseInt(value) : null };
+                    oldValue = currentMeta.dateRange?.end ?? '';
+                    updates.dateRange = { ...currentMeta.dateRange, end: value ? parseInt(value) : null };
                 } else if (field === 'coordinates.lat') {
-                    const current = this.metadataManager.getMetadata(filename);
+                    oldValue = currentMeta.coordinates?.lat ?? '';
                     const lat = value ? parseFloat(value) : null;
                     if (lat !== null && (isNaN(lat) || lat < -90 || lat > 90)) return;
-                    updates.coordinates = { ...current.coordinates, lat };
+                    updates.coordinates = { ...currentMeta.coordinates, lat };
                 } else if (field === 'coordinates.lng') {
-                    const current = this.metadataManager.getMetadata(filename);
+                    oldValue = currentMeta.coordinates?.lng ?? '';
                     const lng = value ? parseFloat(value) : null;
                     if (lng !== null && (isNaN(lng) || lng < -180 || lng > 180)) return;
-                    updates.coordinates = { ...current.coordinates, lng };
+                    updates.coordinates = { ...currentMeta.coordinates, lng };
                 } else if (field === 'centuries') {
+                    oldValue = (currentMeta.centuries || []).join(', ');
                     updates.centuries = value.split(',').map(s => s.trim()).filter(Boolean);
                 } else if (field === 'tags') {
+                    oldValue = (currentMeta.tags || []).join(', ');
                     updates.tags = value.split(',').map(s => s.trim()).filter(Boolean);
                 } else {
+                    oldValue = currentMeta[field] ?? '';
                     updates[field] = value;
                 }
 
+                this._prevValues.set(field, String(oldValue));
+
                 if (this.onMetadataUpdate) {
                     this.onMetadataUpdate(filename, updates);
+                    this._showSaveStatus('\u2713 Guardado');
                 }
             };
 
-            input.addEventListener('blur', () => {
+            const debouncedSave = () => {
+                this._showSaveStatus('Guardando...');
                 if (this._blurTimeout) clearTimeout(this._blurTimeout);
                 this._blurTimeout = setTimeout(saveHandler, 300);
-            });
+            };
+
+            input.addEventListener('blur', debouncedSave);
             if (input.tagName === 'SELECT') {
                 input.addEventListener('change', saveHandler);
             }
@@ -241,6 +267,39 @@ export default class MetadataPanelRenderer {
                     e.preventDefault();
                     e.stopPropagation();
                     saveHandler();
+                }
+                // Ctrl+Z: Undo last change for this field
+                if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+                    const field = input.dataset.field;
+                    if (this._prevValues.has(field)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const prevVal = this._prevValues.get(field);
+                        input.value = prevVal;
+                        // Build updates from restored value
+                        const updates = {};
+                        const currentMeta = this.metadataManager.getMetadata(filename);
+                        if (field === 'dateRange.start') {
+                            updates.dateRange = { ...currentMeta.dateRange, start: prevVal ? parseInt(prevVal) : null };
+                        } else if (field === 'dateRange.end') {
+                            updates.dateRange = { ...currentMeta.dateRange, end: prevVal ? parseInt(prevVal) : null };
+                        } else if (field === 'coordinates.lat') {
+                            updates.coordinates = { ...currentMeta.coordinates, lat: prevVal ? parseFloat(prevVal) : null };
+                        } else if (field === 'coordinates.lng') {
+                            updates.coordinates = { ...currentMeta.coordinates, lng: prevVal ? parseFloat(prevVal) : null };
+                        } else if (field === 'centuries') {
+                            updates.centuries = prevVal ? prevVal.split(',').map(s => s.trim()).filter(Boolean) : [];
+                        } else if (field === 'tags') {
+                            updates.tags = prevVal ? prevVal.split(',').map(s => s.trim()).filter(Boolean) : [];
+                        } else {
+                            updates[field] = prevVal;
+                        }
+                        this._prevValues.delete(field);
+                        if (this.onMetadataUpdate) {
+                            this.onMetadataUpdate(filename, updates);
+                            this._showSaveStatus('\u21A9 Deshecho');
+                        }
+                    }
                 }
             });
         });

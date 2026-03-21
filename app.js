@@ -92,6 +92,10 @@ async function init() {
         refreshUI(filename);
     });
 
+    // Conectar getters de listas de imágenes en modalManager (para exportación filtrada)
+    modalManager.getFilteredImages = () => state.filteredImages;
+    modalManager.getAllImages = () => state.currentImages;
+
     // Conectar callback de abrir original (doble clic)
     uiManager.setOpenOriginalCallback((filename) => {
         modalManager.openImageModal(filename);
@@ -257,8 +261,23 @@ function setupGlobalListeners() {
 
     // Import/Export Metadata (Legacy buttons, routed through managers if needed or kept simple)
     document.getElementById('exportBtn')?.addEventListener('click', () => {
-        metadataManager.exportToJSON();
-        uiManager.showToast('Metadatos exportados', 'success');
+        const filtered = state.filteredImages;
+        const total = state.currentImages;
+        if (filtered.length > 0 && filtered.length < total.length) {
+            const choice = confirm(
+                `¿Qué deseas exportar?\n\nAceptar → Exportar filtro actual (${filtered.length} imágenes)\nCancelar → Exportar todo (${total.length} imágenes)`
+            );
+            if (choice) {
+                metadataManager.exportToJSON(filtered);
+                uiManager.showToast(`Metadatos exportados (${filtered.length} imágenes)`, 'success');
+            } else {
+                metadataManager.exportToJSON();
+                uiManager.showToast('Metadatos exportados (colección completa)', 'success');
+            }
+        } else {
+            metadataManager.exportToJSON();
+            uiManager.showToast('Metadatos exportados', 'success');
+        }
     });
 
     document.getElementById('importBtn')?.addEventListener('click', () => {
@@ -365,6 +384,19 @@ function setupGlobalListeners() {
             metadataManager.saveToStorage();
             uiManager.showToast('Cambios guardados en navegador (Ctrl+G)', 'success');
         }
+        // Ctrl+E: Seleccionar todas las imágenes visibles
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+            const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const anyModalOpen = modalManager.isImageModalOpen() || modalManager.isEditModalOpen();
+            if (!anyModalOpen && tag !== 'input' && tag !== 'textarea') {
+                e.preventDefault();
+                if (state.filteredImages.length > 0) {
+                    uiManager.updateSelection(state.filteredImages);
+                    uiManager.showToast(`Seleccionadas ${state.filteredImages.length} imágenes`, 'success');
+                }
+            }
+        }
+
         // Alt+E: Abrir Modal de Edición
         if (e.altKey && e.key.toLowerCase() === 'e') {
             e.preventDefault();

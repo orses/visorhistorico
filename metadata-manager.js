@@ -631,10 +631,12 @@ export default class MetadataManager {
     }
 
     // Exportar a JSON
-    exportToJSON() {
+    exportToJSON(filenames = null) {
         // Crear copia limpia sin _previewUrl
         const cleanMetadata = {};
-        for (const key in this.metadata) {
+        const keys = filenames ? filenames : Object.keys(this.metadata);
+        for (const key of keys) {
+            if (!this.metadata[key]) continue;
             const { _previewUrl, ...rest } = this.metadata[key];
             cleanMetadata[key] = rest;
         }

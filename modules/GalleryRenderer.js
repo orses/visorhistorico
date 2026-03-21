@@ -14,6 +14,7 @@ export default class GalleryRenderer {
         this.lastSelectedImage = null;
         this._renderContext = null;
         this._lastFilesHash = null;
+        this._hoverPreview = null;
     }
 
     async renderGallery(files) {
@@ -73,6 +74,69 @@ export default class GalleryRenderer {
         }
     }
 
+    computeCompleteness(meta) {
+        let filled = 0;
+        if (meta.mainSubject) filled++;
+        if (meta.author) filled++;
+        if (meta.location && meta.location !== meta.city) filled++;
+        if (meta.dateRange?.start) filled++;
+        if ((meta.centuries || []).length > 0) filled++;
+        if (meta.type) filled++;
+        if (meta.conservationStatus && meta.conservationStatus !== 'Sin clasificar') filled++;
+        if (meta.coordinates?.lat != null) filled++;
+        if (meta.sourceUrl) filled++;
+        if (meta.notes && meta.notes.trim()) filled++;
+        return Math.round((filled / 10) * 100);
+    }
+
+    _getPreviewEl() {
+        if (!this._hoverPreview) {
+            const el = document.createElement('div');
+            el.className = 'card-hover-preview';
+            el.innerHTML = '<img alt="Vista previa">';
+            document.body.appendChild(el);
+            this._hoverPreview = el;
+        }
+        return this._hoverPreview;
+    }
+
+    _showHoverPreview(card, src) {
+        const el = this._getPreviewEl();
+        const img = el.querySelector('img');
+        img.src = src;
+        el.style.opacity = '0';
+        el.style.display = 'block';
+
+        const rect = card.getBoundingClientRect();
+        const previewWidth = 280;
+        const previewHeight = 200; // estimated
+
+        let left = rect.right + 8;
+        if (left + previewWidth > window.innerWidth) {
+            left = rect.left - previewWidth - 8;
+        }
+        if (left < 0) left = 8;
+
+        let top = rect.top;
+        if (top + previewHeight > window.innerHeight) {
+            top = window.innerHeight - previewHeight - 8;
+        }
+        if (top < 0) top = 8;
+
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+    }
+
+    _hideHoverPreview() {
+        if (this._hoverPreview) {
+            this._hoverPreview.style.opacity = '0';
+            setTimeout(() => {
+                if (this._hoverPreview) this._hoverPreview.style.display = 'none';
+            }, 150);
+        }
+    }
+
     createGalleryItem(filename) {
         const meta = this.metadataManager.getMetadata(filename);
         const div = document.createElement('div');
@@ -92,6 +156,14 @@ export default class GalleryRenderer {
             }
         };
 
+        div.addEventListener('mouseenter', () => {
+            const thumbPath = meta._previewUrl || filename;
+            this._showHoverPreview(div, thumbPath);
+        });
+        div.addEventListener('mouseleave', () => {
+            this._hideHoverPreview();
+        });
+
         const status = meta.conservationStatus || 'Sin clasificar';
         const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-');
         const statusDot = `<span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>`;
@@ -100,6 +172,8 @@ export default class GalleryRenderer {
         const imageHTML = meta._isProcessing ?
             `<div class="skeleton-box" role="status" aria-label="Procesando imagen..."></div>` :
             `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${meta.mainSubject || filename}">`;
+
+        const pct = this.computeCompleteness(meta);
 
         div.innerHTML = `
             <div class="card-image-box">
@@ -116,6 +190,7 @@ export default class GalleryRenderer {
                         <span class="card-author" title="${meta.author || 'Anónimo'}">${meta.author || 'Anónimo'}</span>
                     </div>
                 </div>
+                <div class="meta-progress" title="Completitud de metadatos: ${pct}%"><div class="meta-progress-bar" style="width:${pct}%;--pct:${pct}"></div></div>
             </div>
         `;
         return div;
@@ -229,5 +304,14 @@ export default class GalleryRenderer {
         }
 
         card.setAttribute('aria-label', `${meta.mainSubject || filename}${meta.dateRange?.start ? ', ' + meta.dateRange.start : ''}`);
+
+        const pct = this.computeCompleteness(meta);
+        const progressBar = card.querySelector('.meta-progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${pct}%`;
+            progressBar.style.setProperty('--pct', pct);
+        }
+        const progressEl = card.querySelector('.meta-progress');
+        if (progressEl) progressEl.title = `Completitud de metadatos: ${pct}%`;
     }
 }
