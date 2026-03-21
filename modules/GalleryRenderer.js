@@ -73,6 +73,14 @@ export default class GalleryRenderer {
         }
     }
 
+    // Genera el transform completo para card-img, combinando centrado + rotación + escala.
+    // El box es 4:3 (padding-top:75%), así que en 90°/270° escala a 0.75 para que la imagen no desborde.
+    _cardRotateTransform(rotation) {
+        const deg = rotation || 0;
+        const side = (deg === 90 || deg === 270) ? ' scale(0.75)' : '';
+        return `translate(-50%, -50%) rotate(${deg}deg)${side}`;
+    }
+
     computeCompleteness(meta) {
         let filled = 0;
         if (meta.mainSubject) filled++;
@@ -112,7 +120,7 @@ export default class GalleryRenderer {
         const statusDot = `<span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>`;
 
         const thumbPath = meta._previewUrl || filename;
-        const rotStyle = meta.rotation ? ` style="transform:rotate(${meta.rotation}deg)"` : '';
+        const rotStyle = ` style="transform:${this._cardRotateTransform(meta.rotation)}"`;
         const imageHTML = meta._isProcessing ?
             `<div class="skeleton-box" role="status" aria-label="Procesando imagen..."></div>` :
             `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${meta.mainSubject || filename}"${rotStyle}>`;
@@ -250,7 +258,7 @@ export default class GalleryRenderer {
         card.setAttribute('aria-label', `${meta.mainSubject || filename}${meta.dateRange?.start ? ', ' + meta.dateRange.start : ''}`);
 
         const cardImg = card.querySelector('.card-img');
-        if (cardImg) cardImg.style.transform = meta.rotation ? `rotate(${meta.rotation}deg)` : '';
+        if (cardImg) cardImg.style.transform = this._cardRotateTransform(meta.rotation);
 
         const pct = this.computeCompleteness(meta);
         const progressBar = card.querySelector('.meta-progress-bar');
