@@ -15,11 +15,11 @@ export default class FilterManager {
         this.onFilterUpdate = onFilterUpdate;
 
         // Initialize individual filters
-        this.centuryFilter = new CenturyFilter(metadataManager, () => this.applyFilters());
-        this.conservationFilter = new ConservationFilter(metadataManager, () => this.applyFilters());
-        this.typeFilter = new TypeFilter(metadataManager, () => this.applyFilters());
-        this.positioningFilter = new PositioningFilter(metadataManager, () => this.applyFilters());
-        this.geographicFilter = new GeographicFilter(metadataManager, () => this.applyFilters());
+        this.centuryFilter = new CenturyFilter(metadataManager, () => this.applyFilters(null));
+        this.conservationFilter = new ConservationFilter(metadataManager, () => this.applyFilters(null));
+        this.typeFilter = new TypeFilter(metadataManager, () => this.applyFilters(null));
+        this.positioningFilter = new PositioningFilter(metadataManager, () => this.applyFilters(null));
+        this.geographicFilter = new GeographicFilter(metadataManager, () => this.applyFilters(null));
 
         this.currentImages = []; // All available images
     }

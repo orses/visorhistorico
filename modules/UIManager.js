@@ -178,8 +178,6 @@ export default class UIManager {
                 inputs.forEach(input => input.value = '');
                 this.showToast(`Lote actualizado: ${count} elementos modificados`, 'success');
 
-                this._gallery._lastFilesHash = null;
-
                 window.dispatchEvent(new CustomEvent('metadataBatchUpdated', { detail: { files: filenames, updates } }));
 
                 requestAnimationFrame(() => {

@@ -445,10 +445,8 @@ function setupGlobalListeners() {
 
     // Escuchar eventos de actualización en lote disparados desde UIManager
     window.addEventListener('metadataBatchUpdated', (e) => {
-        // Re-filtrar SIN destruir el DOM de los filtros (preserva estado de selección)
-        const currentSearch = document.getElementById('searchInput').value;
-        filterManager.applyFilters(currentSearch, false);
-        // Solo actualizar los contadores numéricos de los chips
+        // Re-filtrar preservando la búsqueda activa (null = no tocar lastQuery)
+        filterManager.applyFilters(null, false);
         filterManager.updateCounts();
     });
 }
@@ -613,27 +611,11 @@ function handleSelectionChange(primaryFile, allSelected) {
     } else {
         // Múltiples seleccionados
         uiManager.renderMultiMetadataPanel(state.selectedImagesList);
-        uiManager.showToast(`${state.selectedImagesList.length} elementos seleccionados para edición en lote`, 'success');
     }
 }
 
 // Wrapper legacy para marcadores (devuelven string simple)
 function selectImage(filename) {
-    // Si ya está seleccionado en una selección múltiple, solo hacemos foco en el mapa
-    if (state.selectedImagesList.length > 1 && state.selectedImagesList.includes(filename)) {
-        mapController.focusMarker(filename);
-        return;
-    }
-
-    // Si hay una selección múltiple pero pulsamos un marcador de FUERA de ella,
-    // por defecto respetamos la selección y solo hacemos foco.
-    // (Previene pérdida accidental de selección al navegar por el mapa)
-    if (state.selectedImagesList.length > 1) {
-        mapController.focusMarker(filename);
-        uiManager.showToast('Filtro: Selección mantenida. Pulsa en la galería para cambiarla.', 'normal');
-        return;
-    }
-
     uiManager.updateSelection([filename]);
     // updateSelection dispara el callback handleSelectionChange internamente
 }
@@ -653,10 +635,8 @@ function refreshUI(filename, fieldAffected = null) {
     const filterFields = ['centuries', 'reign', 'type', 'conservationStatus', 'coordinates.lat', 'coordinates.lng'];
 
     if (!fieldAffected || filterFields.some(f => fieldAffected.startsWith(f))) {
-        const currentSearch = document.getElementById('searchInput').value;
-        // Re-filtrar sin destruir el DOM de los filtros (forceRefresh=false)
-        // Solo actualizamos los contadores de los chips
-        filterManager.applyFilters(currentSearch, false);
+        // Re-filtrar sin destruir el DOM de los filtros, preservando la búsqueda activa
+        filterManager.applyFilters(null, false);
         filterManager.updateCounts();
     } else {
         // ACTUALIZACIÓN PARCIAL: Solo el ítem de la galería. NO se pierde el scroll ni el foco.
