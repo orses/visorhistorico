@@ -68,6 +68,17 @@ export default class UIManager {
         this._toastTimeout = setTimeout(() => this.elements.toast.classList.remove('show'), 3000);
     }
 
+    // --- Selection ---
+    clearSelection() {
+        this._gallery.selectedImages.clear();
+        this._gallery.lastSelectedImage = null;
+        this._gallery.applySelectionStyles();
+        this.elements.metadataContent.innerHTML = '';
+        if (this._gallery.onSelectImage) {
+            this._gallery.onSelectImage(null, []);
+        }
+    }
+
     // --- Multi-selection batch panel ---
     renderMultiMetadataPanel(filenames) {
         if (!filenames || filenames.length === 0) return;
@@ -77,7 +88,10 @@ export default class UIManager {
 
         const html = `
             <div class="multi-select-header" role="region" aria-label="Edición en lote de ${count} elementos">
-                <h3>Edición en Lote</h3>
+                <div class="multi-select-header-row">
+                    <h3>Edición en Lote</h3>
+                    <button id="btnClearSelection" class="btn-clear-selection" title="Quitar selección (Escape)" aria-label="Quitar selección de ${count} elementos">✕ Quitar selección</button>
+                </div>
                 <p>${count} elementos seleccionados</p>
                 <div class="multi-select-warning" role="note">
                     Los valores introducidos a continuación sobreescribirán los existentes en TODOS los elementos seleccionados.
@@ -125,6 +139,11 @@ export default class UIManager {
         `;
 
         this.elements.metadataContent.innerHTML = html;
+
+        const btnClear = this.elements.metadataContent.querySelector('#btnClearSelection');
+        if (btnClear) {
+            btnClear.onclick = () => this.clearSelection();
+        }
 
         const btnApply = this.elements.metadataContent.querySelector('#btnApplyMulti');
         if (btnApply) {

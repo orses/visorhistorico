@@ -106,7 +106,7 @@ async function init() {
         const target = e.target;
         const filename = target.dataset.filename;
 
-        if (filename && (target.classList.contains('popup-image') || target.classList.contains('popup-action-btn'))) {
+        if (filename && target.classList.contains('popup-image')) {
             modalManager.openImageModal(filename);
         }
     });
@@ -422,8 +422,13 @@ function setupGlobalListeners() {
             }
         }
 
-        // ESCAPE en Galería Expandida
+        // ESCAPE: quitar selección múltiple o colapsar galería expandida
         if (e.key === 'Escape') {
+            if (uiManager.selectedImages.size > 1 && !modalManager.isImageModalOpen() && !modalManager.isEditModalOpen()) {
+                uiManager.clearSelection();
+                uiManager.showToast('Selección eliminada', 'normal');
+                return;
+            }
             const panel = document.querySelector('.gallery-panel');
             if (panel.classList.contains('expanded') && !modalManager.isImageModalOpen() && !modalManager.isEditModalOpen()) {
                 panel.classList.remove('expanded');

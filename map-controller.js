@@ -9,7 +9,58 @@ export default class MapController {
         this.markerLayer = null; // This will now be the ClusterGroup
         this.geoFilterLayer = null;
         this.baseLayers = {};
+        this._markerHoverPreview = null;
+        this._markerHoverTimeout = null;
         this.init();
+    }
+
+    _getMarkerHoverPreview() {
+        if (!this._markerHoverPreview) {
+            const container = document.getElementById(this.containerId);
+            const el = document.createElement('div');
+            el.className = 'marker-hover-preview';
+            el.innerHTML = '<img alt="Vista previa"><div class="mhp-title"></div>';
+            container.appendChild(el);
+            this._markerHoverPreview = el;
+        }
+        return this._markerHoverPreview;
+    }
+
+    _showMarkerHoverPreview(marker, metadata) {
+        clearTimeout(this._markerHoverTimeout);
+        const el = this._getMarkerHoverPreview();
+        const img = el.querySelector('img');
+        const titleEl = el.querySelector('.mhp-title');
+
+        img.src = metadata._previewUrl || '';
+        titleEl.textContent = metadata.mainSubject || '';
+        el.style.display = 'block';
+        el.style.opacity = '0';
+
+        const container = document.getElementById(this.containerId);
+        const containerRect = container.getBoundingClientRect();
+        const point = this.map.latLngToContainerPoint(marker.getLatLng());
+
+        const previewW = 220;
+        const previewH = 210;
+        let left = point.x + 14;
+        if (left + previewW > containerRect.width) left = point.x - previewW - 14;
+        if (left < 0) left = 4;
+        let top = point.y - previewH / 2;
+        if (top < 0) top = 4;
+        if (top + previewH > containerRect.height) top = containerRect.height - previewH - 4;
+
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+    }
+
+    _hideMarkerHoverPreview() {
+        if (!this._markerHoverPreview) return;
+        this._markerHoverPreview.style.opacity = '0';
+        this._markerHoverTimeout = setTimeout(() => {
+            if (this._markerHoverPreview) this._markerHoverPreview.style.display = 'none';
+        }, 150);
     }
 
     init() {
@@ -111,8 +162,15 @@ export default class MapController {
             }
         });
 
+        // Hover preview
+        marker.on('mouseover', () => {
+            if (metadata._previewUrl) this._showMarkerHoverPreview(marker, metadata);
+        });
+        marker.on('mouseout', () => this._hideMarkerHoverPreview());
+
         // Evento de click
         marker.on('click', () => {
+            this._hideMarkerHoverPreview();
             if (this.onMarkerClick) {
                 this.onMarkerClick(filename, metadata);
             }
@@ -207,7 +265,6 @@ export default class MapController {
                         ${metadata.centuries.length > 0 ? `<span class="popup-century">${this._esc(metadata.centuries.join(', '))}</span>` : ''}
                     </div>
                     ${metadata.author ? `<div class="popup-author"><span>Autor:</span> ${this._esc(metadata.author)}</div>` : ''}
-                    <button class="popup-action-btn" data-filename="${this._esc(filename)}">Ver imagen completa</button>
                 </div>
             </div>
         `;

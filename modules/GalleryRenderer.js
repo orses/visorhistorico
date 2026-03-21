@@ -14,7 +14,6 @@ export default class GalleryRenderer {
         this.lastSelectedImage = null;
         this._renderContext = null;
         this._lastFilesHash = null;
-        this._hoverPreview = null;
     }
 
     async renderGallery(files) {
@@ -89,54 +88,6 @@ export default class GalleryRenderer {
         return Math.round((filled / 10) * 100);
     }
 
-    _getPreviewEl() {
-        if (!this._hoverPreview) {
-            const el = document.createElement('div');
-            el.className = 'card-hover-preview';
-            el.innerHTML = '<img alt="Vista previa">';
-            document.body.appendChild(el);
-            this._hoverPreview = el;
-        }
-        return this._hoverPreview;
-    }
-
-    _showHoverPreview(card, src) {
-        const el = this._getPreviewEl();
-        const img = el.querySelector('img');
-        img.src = src;
-        el.style.opacity = '0';
-        el.style.display = 'block';
-
-        const rect = card.getBoundingClientRect();
-        const previewWidth = 280;
-        const previewHeight = 200; // estimated
-
-        let left = rect.right + 8;
-        if (left + previewWidth > window.innerWidth) {
-            left = rect.left - previewWidth - 8;
-        }
-        if (left < 0) left = 8;
-
-        let top = rect.top;
-        if (top + previewHeight > window.innerHeight) {
-            top = window.innerHeight - previewHeight - 8;
-        }
-        if (top < 0) top = 8;
-
-        el.style.left = left + 'px';
-        el.style.top = top + 'px';
-        requestAnimationFrame(() => { el.style.opacity = '1'; });
-    }
-
-    _hideHoverPreview() {
-        if (this._hoverPreview) {
-            this._hoverPreview.style.opacity = '0';
-            setTimeout(() => {
-                if (this._hoverPreview) this._hoverPreview.style.display = 'none';
-            }, 150);
-        }
-    }
-
     createGalleryItem(filename) {
         const meta = this.metadataManager.getMetadata(filename);
         const div = document.createElement('div');
@@ -155,14 +106,6 @@ export default class GalleryRenderer {
                 this.handleImageClick(e, filename);
             }
         };
-
-        div.addEventListener('mouseenter', () => {
-            const thumbPath = meta._previewUrl || filename;
-            this._showHoverPreview(div, thumbPath);
-        });
-        div.addEventListener('mouseleave', () => {
-            this._hideHoverPreview();
-        });
 
         const status = meta.conservationStatus || 'Sin clasificar';
         const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-');

@@ -1107,25 +1107,6 @@ textarea.form-control {
     margin-right: 4px;
 }
 
-.popup-action-btn {
-    width: 100%;
-    background: var(--grad-primary);
-    color: #000;
-    border: none;
-    padding: 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    transition: all 0.2s;
-}
-
-.popup-action-btn:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-}
 
 /* .leaflet-popup-close-button → definición única más abajo */
 
@@ -1683,6 +1664,13 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     border: 1px solid var(--accent-primary);
 }
 
+.multi-select-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .multi-select-header h3 {
     color: var(--accent-primary);
     margin-bottom: 5px;
@@ -1691,6 +1679,24 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
 .multi-select-header p {
     color: var(--text-muted);
     font-size: 0.9rem;
+}
+
+.btn-clear-selection {
+    background: transparent;
+    border: 1px solid #555;
+    color: var(--text-muted);
+    border-radius: 5px;
+    padding: 3px 9px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-clear-selection:hover {
+    border-color: #ff4757;
+    color: #ff4757;
 }
 
 .multi-select-warning {
@@ -1856,26 +1862,33 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     transition: width 0.3s ease;
 }
 
-/* ===== FEATURE: Hover Preview (Feature 6) ===== */
-.card-hover-preview {
-    position: fixed;
+/* ===== Marker hover preview ===== */
+.marker-hover-preview {
+    position: absolute;
     z-index: 9999;
-    max-width: 280px;
+    max-width: 220px;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 12px rgba(0,242,254,0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 10px rgba(0,242,254,0.12);
     padding: 4px;
     pointer-events: none;
     display: none;
     opacity: 0;
     transition: opacity 0.15s ease;
 }
-.card-hover-preview img {
+.marker-hover-preview img {
     width: 100%;
-    max-width: 272px;
-    max-height: 220px;
+    max-height: 180px;
     object-fit: contain;
     border-radius: calc(var(--radius-lg) - 2px);
     display: block;
+}
+.marker-hover-preview .mhp-title {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    padding: 4px 3px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
