@@ -478,21 +478,18 @@ export default class MapController {
     }
 
     _addNoteMarker(note) {
+        const escaped = this._esc(note.text);
         const icon = L.divIcon({
             className: 'note-marker-container',
-            html: '<div class="note-marker-pin">📝</div>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            html: `<div class="note-marker-label">${escaped}</div>`,
+            iconSize: null,
+            iconAnchor: [0, 0]
         });
 
         const marker = L.marker([note.lat, note.lng], { icon });
         marker._noteId = note.id;
 
-        const popupContent = `
-            <div class="note-popup-text">${this._esc(note.text)}</div>
-            <button class="note-delete-btn" data-id="${note.id}">Eliminar nota</button>
-        `;
-        marker.bindPopup(popupContent);
+        marker.bindPopup(`<button class="note-delete-btn" data-id="${note.id}">Eliminar nota</button>`);
         marker.addTo(this.notesLayer);
     }
 

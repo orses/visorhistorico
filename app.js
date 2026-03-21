@@ -316,20 +316,27 @@ function setupGlobalListeners() {
     });
 
     // Map Notes Control
+    let noteControlBtn = null;
+    const setNoteMode = (active) => {
+        noteMode = active;
+        if (noteControlBtn) noteControlBtn.classList.toggle('active', active);
+        mapController.map.getContainer().style.cursor = active ? 'crosshair' : '';
+    };
+
     const NoteControl = L.Control.extend({
         onAdd() {
             const btn = L.DomUtil.create('button', 'leaflet-bar note-control-btn');
             btn.innerHTML = '📝';
-            btn.title = 'Añadir nota al mapa';
+            btn.title = 'Añadir nota al mapa (Esc para cancelar)';
             btn.setAttribute('aria-label', 'Añadir nota al mapa');
+            noteControlBtn = btn;
             L.DomEvent.on(btn, 'click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                noteMode = !noteMode;
-                btn.classList.toggle('active', noteMode);
+                setNoteMode(!noteMode);
             });
             return btn;
         },
-        onRemove() {}
+        onRemove() { noteControlBtn = null; }
     });
     new NoteControl({ position: 'topleft' }).addTo(mapController.map);
 
@@ -359,8 +366,9 @@ function setupGlobalListeners() {
     };
 
     mapController.onMapClick = (e) => {
-        // Note placement mode
+        // Note placement mode: single-shot, always exits after one click
         if (noteMode) {
+            setNoteMode(false);
             const text = prompt('Texto de la nota:');
             if (text && text.trim()) {
                 mapController.addNote(e.latlng.lat, e.latlng.lng, text.trim());
@@ -484,6 +492,12 @@ function setupGlobalListeners() {
                 if (idx < 0) idx = 0;
                 uiManager.updateSelection([images[idx]]);
             }
+        }
+
+        // ESCAPE: cancelar modo nota
+        if (e.key === 'Escape' && noteMode) {
+            setNoteMode(false);
+            return;
         }
 
         // ESCAPE: quitar selección múltiple o colapsar galería expandida
