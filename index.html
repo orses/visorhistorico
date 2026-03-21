@@ -194,6 +194,10 @@
         <div class="modal-content" style="background:transparent;box-shadow:none;border:none;">
             <h2 id="imageModalTitle" class="visually-hidden">Vista de imagen ampliada</h2>
             <button class="close-btn" id="closeModalBtn" aria-label="Cerrar visor de imagen">&times;</button>
+            <div class="modal-rotate-controls">
+                <button id="rotateCCWBtn" class="modal-rotate-btn" title="Rotar 90° izquierda" aria-label="Rotar imagen 90 grados a la izquierda">↺</button>
+                <button id="rotateCWBtn"  class="modal-rotate-btn" title="Rotar 90° derecha"   aria-label="Rotar imagen 90 grados a la derecha">↻</button>
+            </div>
             <img id="modalImage" class="large-image-view" src="" alt="">
             <div id="modalInfo"
                 style="margin-top:1rem;text-align:center;color:white;text-shadow:0 2px 4px rgba(0,0,0,0.8);" aria-live="polite"></div>

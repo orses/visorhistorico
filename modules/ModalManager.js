@@ -43,6 +43,8 @@ export default class ModalManager {
         this.elements.imageModal?.addEventListener('click', e => {
             if (e.target === this.elements.imageModal) this.elements.imageModal.classList.remove('active');
         });
+        document.getElementById('rotateCWBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this._applyRotation(90); });
+        document.getElementById('rotateCCWBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this._applyRotation(-90); });
 
         // Edit Modal
         this.elements.closeEditModal?.addEventListener('click', () => this.closeEditModal());
@@ -105,7 +107,7 @@ export default class ModalManager {
         // Shortcuts Modal
         this.elements.shortcutsModal = document.getElementById('shortcutsModal');
         this.elements.shortcutsBtn = document.getElementById('shortcutsBtn');
-        this.elements.closeShortcutsModal = document.getElementById('closeShortcutsModal');
+        this.elements.closeShortcutsModal = document.getElementById('closeShortcutsModalBtn');
         this.elements.closeShortcutsBtnAction = document.getElementById('closeShortcutsBtn');
 
         this.elements.shortcutsBtn?.addEventListener('click', () => this.openShortcutsModal());
@@ -126,24 +128,31 @@ export default class ModalManager {
         this.currentImageFile = filename;
         const meta = this.metadataManager.getMetadata(filename);
 
-        // Reset zoom state
-        this.zoomState = { scale: 1, pX: 0, pY: 0 };
+        // Reset zoom state, preserve saved rotation
+        this.zoomState = { scale: 1, pX: 0, pY: 0, rotation: meta.rotation || 0 };
 
         this.elements.modalImage.src = meta._previewUrl || ('../' + filename);
-        // User Request: No text in modal, just image
         this.elements.modalInfo.textContent = '';
-        this.elements.modalInfo.style.display = 'none'; // Ensure it doesn't take space
+        this.elements.modalInfo.style.display = 'none';
 
         // Setup container styles for zoom
         this.elements.modalImage.parentElement.style.overflow = 'hidden';
-        this.elements.modalImage.parentElement.className = 'modal-image-container'; // Ensure class is there
-        this.elements.modalImage.style.transform = `translate(0px, 0px) scale(1)`;
+        this.elements.modalImage.parentElement.className = 'modal-image-container';
         this.elements.modalImage.style.cursor = 'grab';
 
         this.elements.imageModal.classList.add('active');
 
         // Initialize Zoom Logic
         this.initZoom(this.elements.modalImage);
+    }
+
+    _applyRotation(delta) {
+        if (!this.currentImageFile) return;
+        this.zoomState.rotation = ((this.zoomState.rotation + delta) % 360 + 360) % 360;
+        if (this._updateZoomTransform) this._updateZoomTransform();
+        this.metadataManager.updateMetadata(this.currentImageFile, { rotation: this.zoomState.rotation });
+        // Notify app to refresh card and panel
+        window.dispatchEvent(new CustomEvent('imageRotated', { detail: { filename: this.currentImageFile, rotation: this.zoomState.rotation } }));
     }
 
     initZoom(img) {
@@ -155,7 +164,8 @@ export default class ModalManager {
         let startX, startY;
 
         const updateTransform = () => {
-            img.style.transform = `translate(${this.zoomState.pX}px, ${this.zoomState.pY}px) scale(${this.zoomState.scale})`;
+            const rot = this.zoomState.rotation || 0;
+            img.style.transform = `rotate(${rot}deg) translate(${this.zoomState.pX}px, ${this.zoomState.pY}px) scale(${this.zoomState.scale})`;
             img.style.cursor = isDragging ? 'grabbing' : (this.zoomState.scale > 1 ? 'grab' : 'default');
         };
 

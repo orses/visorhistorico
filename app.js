@@ -506,6 +506,15 @@ function setupGlobalListeners() {
         }
     });
 
+    // Rotación de imagen: refrescar tarjeta y panel sin re-renderizar galería
+    window.addEventListener('imageRotated', (e) => {
+        const { filename } = e.detail;
+        uiManager.updateGalleryItem(filename);
+        if (state.primarySelectedImage === filename) {
+            uiManager.renderMetadataPanel(filename);
+        }
+    });
+
     // Escuchar eventos de actualización en lote disparados desde UIManager
     window.addEventListener('metadataBatchUpdated', (e) => {
         // Re-filtrar preservando la búsqueda activa (null = no tocar lastQuery)

@@ -36,7 +36,7 @@ export default class MetadataPanelRenderer {
         const html = `
             <div id="saveStatus" class="save-status"></div>
             <div class="details-image-container" title="Clic para ampliar">
-                <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${meta.mainSubject || filename}">
+                <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${meta.mainSubject || filename}"${meta.rotation ? ` style="transform:rotate(${meta.rotation}deg)"` : ''}>
             </div>
 
             <div class="meta-row-tech" role="group" aria-label="Información técnica">

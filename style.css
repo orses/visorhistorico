@@ -905,6 +905,32 @@ textarea.form-control {
     cursor: pointer;
 }
 
+.modal-rotate-controls {
+    position: absolute;
+    top: 20px;
+    right: 70px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+}
+.modal-rotate-btn {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.modal-rotate-btn:hover {
+    background: rgba(255,255,255,0.25);
+}
+
 .toast {
     position: fixed;
     bottom: 2rem;
@@ -1268,9 +1294,17 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
 }
 
 .close-modal-inline {
-    font-size: 2rem;
-    cursor: pointer;
+    font-size: 1.6rem;
     line-height: 1;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 0 4px;
+    transition: color 0.15s;
+}
+.close-modal-inline:hover {
+    color: var(--text-primary);
 }
 
 .edit-sections-container {

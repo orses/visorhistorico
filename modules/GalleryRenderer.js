@@ -112,9 +112,10 @@ export default class GalleryRenderer {
         const statusDot = `<span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>`;
 
         const thumbPath = meta._previewUrl || filename;
+        const rotStyle = meta.rotation ? ` style="transform:rotate(${meta.rotation}deg)"` : '';
         const imageHTML = meta._isProcessing ?
             `<div class="skeleton-box" role="status" aria-label="Procesando imagen..."></div>` :
-            `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${meta.mainSubject || filename}">`;
+            `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${meta.mainSubject || filename}"${rotStyle}>`;
 
         const pct = this.computeCompleteness(meta);
 
@@ -247,6 +248,9 @@ export default class GalleryRenderer {
         }
 
         card.setAttribute('aria-label', `${meta.mainSubject || filename}${meta.dateRange?.start ? ', ' + meta.dateRange.start : ''}`);
+
+        const cardImg = card.querySelector('.card-img');
+        if (cardImg) cardImg.style.transform = meta.rotation ? `rotate(${meta.rotation}deg)` : '';
 
         const pct = this.computeCompleteness(meta);
         const progressBar = card.querySelector('.meta-progress-bar');
