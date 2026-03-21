@@ -130,6 +130,9 @@ export default class MapController {
         this.map.on('zoomend', updateNotesVisibility);
         this._updateNotesVisibility = updateNotesVisibility;
 
+        // Ocultar hover preview si el mapa se mueve o hace zoom
+        this.map.on('movestart zoomstart', () => this._hideMarkerHoverPreview());
+
         // Habilitar edición de coordenadas por drag
         this.map.on('click', (e) => {
             if (this.onMapClick) {
