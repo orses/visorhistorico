@@ -462,6 +462,33 @@ body {
     background: rgba(255, 255, 255, 0.06) !important;
 }
 
+/* Botón limpiar filtros */
+.clear-filters-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 6px 8px 2px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent-primary);
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.clear-filters-btn:hover {
+    background: rgba(0, 242, 254, 0.18);
+    border-color: var(--accent-primary);
+}
+
+/* Panel de metadatos oculto */
+.metadata-panel.panel-hidden {
+    display: none;
+}
+
 /* Indicador de filtros activos (embudo encendido) */
 .toolbar-action-btn.filters-applied {
     color: var(--accent-primary) !important;
@@ -1166,13 +1193,20 @@ textarea.form-control {
 }
 
 .leaflet-container a.leaflet-popup-close-button {
-    color: var(--text-dim);
-    padding: 8px;
-    font-size: 16px;
+    color: var(--text-main);
+    padding: 6px 8px;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    background: rgba(0,0,0,0.35);
+    border-radius: 0 8px 0 4px;
+    top: 0;
+    right: 0;
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-    color: var(--accent-secondary);
+    color: #fff;
+    background: rgba(0,0,0,0.6);
 }
 
 .leaflet-popup-tip {
@@ -1927,6 +1961,37 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     text-overflow: ellipsis;
 }
 
+/* Sentinel del virtual scroll */
+.gallery-sentinel {
+    height: 1px;
+    grid-column: 1 / -1;
+    pointer-events: none;
+}
+
+/* Marcador de vista previa de coordenadas */
+.preview-marker-container { background: transparent !important; border: none !important; }
+.preview-marker-pin {
+    width: 16px;
+    height: 16px;
+    background: #00ffa3;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.35);
+    animation: pulse-preview 1s ease-in-out infinite alternate;
+}
+@keyframes pulse-preview {
+    from { box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.25); }
+    to   { box-shadow: 0 0 0 6px rgba(0, 255, 163, 0.55); }
+}
+
+/* Cursor modo asignación en lote */
+body.batch-coords-active #map { cursor: crosshair !important; }
+.batch-coords-btn {
+    width: 100%;
+    margin-top: 8px;
+    font-size: 0.78rem;
+}
+
 /* Map Notes */
 .note-marker-container { background: transparent; border: none; }
 .note-marker-label {
@@ -1978,3 +2043,128 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     cursor: pointer;
     width: 100%;
 }
+
+/* ===== Timeline Filter ===== */
+.timeline-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    margin-left: auto;
+}
+.timeline-toggle-label input { cursor: pointer; accent-color: var(--accent-primary); }
+.timeline-slider-wrap { padding: 4px 8px 8px; }
+.timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--accent-primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.timeline-range-wrap { position: relative; height: 20px; }
+.timeline-range {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    top: 8px;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.timeline-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    border: 2px solid var(--bg-panel);
+    cursor: pointer;
+    pointer-events: all;
+    position: relative;
+    z-index: 3;
+}
+.timeline-range:disabled::-webkit-slider-thumb { background: var(--text-dim); cursor: default; }
+.timeline-track-wrap { position: relative; height: 4px; margin-top: -4px; border-radius: 2px; }
+.timeline-track { position: absolute; inset: 0; background: var(--border-light); border-radius: 2px; }
+.timeline-track-fill { position: absolute; height: 100%; background: var(--accent-primary); border-radius: 2px; transition: left 0.05s, width 0.05s; }
+
+/* ===== Comparador de épocas ===== */
+.comparator-container {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    width: min(95vw, 1100px);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.comparator-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+.comparator-header h2 { font-size: 0.9rem; font-weight: 600; margin: 0; }
+.comparator-panes {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+.comparator-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+.comparator-img-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    overflow: hidden;
+    min-height: 0;
+}
+.comparator-img-wrap img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.comparator-info {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+.comparator-divider { width: 2px; background: var(--accent-primary); flex-shrink: 0; opacity: 0.4; }
+.comp-title { font-weight: 600; color: var(--text-main); margin-bottom: 2px; }
+.comp-meta { color: var(--accent-primary); font-size: 0.72rem; }
+.comp-location, .comp-author { color: var(--text-dim); font-size: 0.72rem; }
+@media (max-width: 600px) {
+    .comparator-panes { flex-direction: column; }
+    .comparator-divider { width: 100%; height: 2px; }
+}
+.modal-close-btn {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    border-radius: var(--radius-sm, 4px);
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+}
+.modal-close-btn:hover { background: var(--border-light); }

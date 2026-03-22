@@ -17,13 +17,15 @@ import ModalManager from './modules/ModalManager.js';
 import StatisticsService from './modules/services/StatisticsService.js';
 import ExportService from './modules/services/ExportService.js';
 import logger from './modules/logger.js';
-import { decodeTiffsInBackground } from './modules/tiff-decoder.js';
+import { decodeTiffsInBackground, decodeSingleTiff } from './modules/tiff-decoder.js';
 import { tryRestoreSession } from './modules/session-manager.js';
+import SearchWorkerClient from './modules/SearchWorkerClient.js';
 
 // --- STATE ---
 let metadataManager;
 let mapController;
 let searchEngine;
+let searchWorkerClient;
 let uiManager;
 let filterManager;
 let modalManager;
@@ -37,6 +39,7 @@ const state = {
     primarySelectedImage: null,
     pendingDirectoryHandle: null,
     allScannedFiles: [],
+    tiffFileMap: new Map(), // filename → File (for on-demand decode)
 };
 let searchTimeout = null;
 let noteMode = false;
@@ -46,6 +49,7 @@ async function init() {
     metadataManager = new MetadataManager();
     await metadataManager.init(); // ¡Ahora es asíncrono y usa IndexedDB!
     searchEngine = new SearchEngine(metadataManager);
+    searchWorkerClient = new SearchWorkerClient();
 
     // Map controller expects container ID
     mapController = new MapController('map');
@@ -91,6 +95,9 @@ async function init() {
         }
     });
 
+    // Conectar search worker al filter manager
+    filterManager.searchWorkerClient = searchWorkerClient;
+
     modalManager = new ModalManager(metadataManager, uiManager, statsService, exportService, (filename, updates) => {
         metadataManager.updateMetadata(filename, updates);
         filterManager.applyFilters(null); // Auto-refresh filters preserving active search
@@ -100,6 +107,9 @@ async function init() {
     // Conectar getters de listas de imágenes en modalManager (para exportación filtrada)
     modalManager.getFilteredImages = () => state.filteredImages;
     modalManager.getAllImages = () => state.currentImages;
+
+    // Conectar comparador de épocas
+    uiManager.onCompare = (a, b) => modalManager.openComparatorModal(a, b);
 
     // Conectar callback de abrir original (doble clic)
     uiManager.setOpenOriginalCallback((filename) => {
@@ -242,6 +252,22 @@ function setupGlobalListeners() {
         btn.classList.toggle('active', !isHidden);
     });
 
+    // Limpiar todos los filtros
+    document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('clearSearchBtn').classList.add('hidden');
+        filterManager.resetAll();
+    });
+
+    // Toggle panel de metadatos (derecho)
+    document.getElementById('toggleDetailsPanelBtn')?.addEventListener('click', (e) => {
+        const panel = document.getElementById('metadataPanel');
+        const btn = e.target.closest('button');
+        const isHidden = panel.classList.toggle('panel-hidden');
+        btn.classList.toggle('active', !isHidden);
+        btn.setAttribute('aria-pressed', String(!isHidden));
+    });
+
     // Expand Gallery
     document.getElementById('expandGalleryBtn')?.addEventListener('click', (e) => {
         const panel = document.querySelector('.gallery-panel');
@@ -365,7 +391,31 @@ function setupGlobalListeners() {
         uiManager.showToast('Ubicación actualizada (Arrastrar)', 'success');
     };
 
+    // Vista previa de coordenadas en tiempo real (mientras se edita el campo)
+    uiManager._panel.onCoordinatePreview = (lat, lng) => {
+        if (lat !== null && lng !== null) {
+            mapController.showPreviewMarker(lat, lng);
+        } else {
+            mapController.hidePreviewMarker();
+        }
+    };
+
     mapController.onMapClick = (e) => {
+        // Modo asignación de coordenadas en lote
+        if (uiManager._batchCoordsMode) {
+            uiManager._batchCoordsMode = false;
+            document.body.classList.remove('batch-coords-active');
+            const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
+            const count = state.selectedImagesList.length;
+            state.selectedImagesList.forEach(f => {
+                metadataManager.updateMetadata(f, { coordinates: coords, _userCoords: true });
+                mapController.addOrUpdateMarker(f, metadataManager.getMetadata(f));
+            });
+            filterManager.applyFilters(null);
+            uiManager.showToast(`Coordenadas asignadas a ${count} imágenes`, 'success');
+            return;
+        }
+
         // Note placement mode: single-shot, always exits after one click
         if (noteMode) {
             setNoteMode(false);
@@ -520,6 +570,18 @@ function setupGlobalListeners() {
         }
     });
 
+    // On-demand TIFF decode cuando la tarjeta entra en el viewport
+    window.addEventListener('tiffDecodeRequest', (e) => {
+        const { filename } = e.detail;
+        const file = state.tiffFileMap.get(filename);
+        if (file) {
+            const meta = metadataManager.getMetadata(filename);
+            if (meta._needsDecode && !meta._previewUrl) {
+                decodeSingleTiff(filename, file, { metadataManager, uiManager });
+            }
+        }
+    });
+
     // Rotación de imagen: refrescar tarjeta y panel sin re-renderizar galería
     window.addEventListener('imageRotated', (e) => {
         const { filename } = e.detail;
@@ -532,6 +594,7 @@ function setupGlobalListeners() {
     // Escuchar eventos de actualización en lote disparados desde UIManager
     window.addEventListener('metadataBatchUpdated', (e) => {
         // Re-filtrar preservando la búsqueda activa (null = no tocar lastQuery)
+        searchWorkerClient.update(metadataManager.getAllMetadata());
         filterManager.applyFilters(null, false);
         filterManager.updateCounts();
     });
@@ -584,6 +647,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         state.currentImages = [];
         state.allScannedFiles = [];
+        state.tiffFileMap.clear();
         const pendingTiffs = [];
 
         for await (const entry of dirHandle.values()) {
@@ -608,10 +672,12 @@ async function loadImagesFromDirectory(existingHandle = null) {
                     const isTiff = /\.(tif|tiff)$/i.test(entry.name);
 
                     if (isTiff) {
-                        // Defer TIFF decoding — store File for background processing
+                        // On-demand TIFF decoding — store File reference for later
                         pendingTiffs.push({ name: entry.name, file });
+                        state.tiffFileMap.set(entry.name, file);
                         metadataManager.setVolatileData(entry.name, {
-                            _isProcessing: true,
+                            _isProcessing: false,
+                            _needsDecode: true,
                             _fileSize: file.size
                         });
                     } else {
@@ -635,6 +701,10 @@ async function loadImagesFromDirectory(existingHandle = null) {
         filterManager.renderControllers();
 
         metadataManager.resumeSave(); // Re-enable and save once
+
+        // Initialize search worker with current metadata
+        searchWorkerClient.init(metadataManager.getAllMetadata());
+
         filterManager.applyFilters();
 
         // Actualizar marcadores del mapa con todas las imágenes que tienen coordenadas
@@ -649,10 +719,8 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         uiManager.showToast(`Escaneados ${state.allScannedFiles.length} archivos | ${state.currentImages.length} catalogados`, 'success');
 
-        // Background TIFF decoding (non-blocking)
-        if (pendingTiffs.length > 0) {
-            decodeTiffsInBackground(pendingTiffs, { metadataManager, uiManager });
-        }
+        // TIFFs are now decoded on-demand when cards enter viewport (Feature 5)
+        // decodeTiffsInBackground is kept for backward compatibility but not called here
 
     } catch (err) {
         if (err.name === 'AbortError') {

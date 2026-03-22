@@ -405,6 +405,31 @@ export default class ModalManager {
         this.closeEditModal();
     }
 
+    // --- COMPARATOR MODAL ---
+    openComparatorModal(filenameA, filenameB) {
+        const metaA = this.metadataManager.getMetadata(filenameA);
+        const metaB = this.metadataManager.getMetadata(filenameB);
+
+        const modal = document.getElementById('comparatorModal');
+        if (!modal) return;
+
+        document.getElementById('comparatorImgA').src = metaA._previewUrl || filenameA;
+        document.getElementById('comparatorImgB').src = metaB._previewUrl || filenameB;
+
+        const infoHtml = (meta) => `
+            <div class="comp-title">${meta.mainSubject || 'Sin título'}</div>
+            <div class="comp-meta">${meta.dateRange?.start || ''}${meta.dateRange?.end && meta.dateRange.end !== meta.dateRange.start ? '–' + meta.dateRange.end : ''} ${(meta.centuries||[]).join(', ')}</div>
+            ${meta.location ? `<div class="comp-location">${meta.location}</div>` : ''}
+            ${meta.author ? `<div class="comp-author">${meta.author}</div>` : ''}
+        `;
+        document.getElementById('comparatorInfoA').innerHTML = infoHtml(metaA);
+        document.getElementById('comparatorInfoB').innerHTML = infoHtml(metaB);
+
+        document.getElementById('closeComparatorBtn').onclick = () => modal.classList.remove('active');
+        modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('active'); };
+        modal.classList.add('active');
+    }
+
     // --- STATS MODAL ---
     openStatsModal() {
         // En lugar de texto estático, ahora llamamos a la vista HTML enriquecida con gráficos 

@@ -10,6 +10,7 @@ export default class MetadataPanelRenderer {
         this.metadataContentEl = metadataContentEl;
         this.onMetadataUpdate = null;
         this.onOpenOriginal = null;
+        this.onCoordinatePreview = null;
         this._blurTimeout = null;
         this._prevValues = new Map();
         this._saveStatusTimeout = null;
@@ -303,6 +304,30 @@ export default class MetadataPanelRenderer {
                 }
             });
         });
+
+        // Vista previa de coordenadas en tiempo real
+        const latInput = this.metadataContentEl.querySelector('#field-lat');
+        const lngInput = this.metadataContentEl.querySelector('#field-lng');
+        const triggerPreview = () => {
+            if (!this.onCoordinatePreview) return;
+            const lat = parseFloat(latInput?.value);
+            const lng = parseFloat(lngInput?.value);
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                this.onCoordinatePreview(lat, lng);
+            } else if (!latInput?.value && !lngInput?.value) {
+                this.onCoordinatePreview(null, null);
+            }
+        };
+        latInput?.addEventListener('input', triggerPreview);
+        lngInput?.addEventListener('input', triggerPreview);
+        // Ocultar preview al perder foco si no se guarda
+        [latInput, lngInput].forEach(el => el?.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (document.activeElement !== latInput && document.activeElement !== lngInput) {
+                    if (this.onCoordinatePreview) this.onCoordinatePreview(null, null);
+                }
+            }, 150);
+        }));
     }
 
     formatFileSize(bytes) {

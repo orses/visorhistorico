@@ -10,6 +10,8 @@ import MetadataPanelRenderer from './MetadataPanelRenderer.js';
 export default class UIManager {
     constructor(metadataManager, onSelectImage) {
         this.metadataManager = metadataManager;
+        this._batchCoordsMode = false;
+        this.onCompare = null;
 
         this.elements = {
             galleryGrid: document.getElementById('galleryGrid'),
@@ -135,6 +137,12 @@ export default class UIManager {
                 <button id="btnApplyMulti" class="btn btn-apply-batch" aria-label="Aplicar cambios a ${count} elementos seleccionados">
                     Aplicar Cambios (${count})
                 </button>
+                <button id="btnBatchCoords" class="btn btn-secondary batch-coords-btn" aria-label="Asignar coordenadas a todos los seleccionados haciendo clic en el mapa">
+                    📍 Clic en el mapa para asignar coords a los ${count} seleccionados
+                </button>
+                ${count === 2 ? `<button id="btnCompare" class="btn btn-secondary" style="width:100%;margin-top:6px;" aria-label="Comparar las dos imágenes seleccionadas">
+                    ⚖️ Comparar épocas
+                </button>` : ''}
             </div>
         `;
 
@@ -143,6 +151,22 @@ export default class UIManager {
         const btnClear = this.elements.metadataContent.querySelector('#btnClearSelection');
         if (btnClear) {
             btnClear.onclick = () => this.clearSelection();
+        }
+
+        const btnBatchCoords = this.elements.metadataContent.querySelector('#btnBatchCoords');
+        if (btnBatchCoords) {
+            btnBatchCoords.onclick = () => {
+                this._batchCoordsMode = true;
+                document.body.classList.add('batch-coords-active');
+                this.showToast(`Haz clic en el mapa para asignar coordenadas a ${count} imágenes`, 'normal');
+            };
+        }
+
+        const btnCompare = this.elements.metadataContent.querySelector('#btnCompare');
+        if (btnCompare && count === 2) {
+            btnCompare.onclick = () => {
+                if (this.onCompare) this.onCompare(filenames[0], filenames[1]);
+            };
         }
 
         const btnApply = this.elements.metadataContent.querySelector('#btnApplyMulti');

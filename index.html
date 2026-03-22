@@ -147,16 +147,25 @@
                                 <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
                             </svg>
                         </button>
+                        <button class="toggle-btn toolbar-action-btn active" id="toggleDetailsPanelBtn" aria-label="Mostrar u ocultar panel de metadatos" aria-pressed="true">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
                 <div id="filtersCollapsible" class="filters-collapsible" aria-label="Filtros">
                     <div class="filters-wrapper">
+                        <button id="clearFiltersBtn" class="clear-filters-btn hidden" aria-label="Limpiar todos los filtros">
+                            ✕ Limpiar filtros
+                        </button>
                         <div class="type-filters" id="typeFilters"></div>
                         <div class="century-filters" id="centuryFilters"></div>
                         <div class="conservation-filters" id="conservationFilters"></div>
                         <div class="positioning-filters" id="positioningFilters"></div>
                         <div class="geographic-filters" id="geographicFilters"></div>
+                        <div class="timeline-filter" id="timelineFilter"></div>
                     </div>
                 </div>
             </div>
@@ -363,6 +372,27 @@
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
         <span id="toastMessage">Acción completada</span>
+    </div>
+
+    <!-- Modal: Comparador de épocas -->
+    <div id="comparatorModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="comparatorTitle" aria-hidden="true">
+        <div class="comparator-container">
+            <div class="comparator-header">
+                <h2 id="comparatorTitle">Comparador de épocas</h2>
+                <button id="closeComparatorBtn" class="modal-close-btn" aria-label="Cerrar comparador">✕</button>
+            </div>
+            <div class="comparator-panes">
+                <div class="comparator-pane" id="comparatorPaneA">
+                    <div class="comparator-img-wrap"><img id="comparatorImgA" alt="Imagen A"></div>
+                    <div class="comparator-info" id="comparatorInfoA"></div>
+                </div>
+                <div class="comparator-divider"></div>
+                <div class="comparator-pane" id="comparatorPaneB">
+                    <div class="comparator-img-wrap"><img id="comparatorImgB" alt="Imagen B"></div>
+                    <div class="comparator-info" id="comparatorInfoB"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <input type="file" id="importInput" accept=".json" hidden aria-hidden="true">

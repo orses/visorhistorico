@@ -13,6 +13,7 @@ export default class MapController {
         this.baseLayers = {};
         this._markerHoverPreview = null;
         this._markerHoverTimeout = null;
+        this._previewMarker = null;
         this.onNoteDelete = null;
         this.onNoteAdd = null;
         this.init();
@@ -99,7 +100,7 @@ export default class MapController {
             center: [40.4168, -3.7038],
             zoom: 13,
             layers: [osm], // Por defecto mapa convencional
-            closePopupOnClick: false // No cerrar popups al pinchar fuera (ej. en galería)
+            closePopupOnClick: true
         });
 
         // 3. Añadir control de selección de capas
@@ -177,6 +178,7 @@ export default class MapController {
 
         // Evento de drag para actualizar coordenadas
         marker.on('dragend', (e) => {
+            isDragging = false;
             let newPos = e.target.getLatLng();
 
             // Intentar snap a marcadores cercanos
@@ -192,12 +194,16 @@ export default class MapController {
             }
         });
 
-        // Hover preview
+        // Hover preview — flag para suprimir durante drag
+        let isDragging = false;
         marker.on('mouseover', () => {
-            if (metadata._previewUrl) this._showMarkerHoverPreview(marker, metadata);
+            if (!isDragging && metadata._previewUrl) this._showMarkerHoverPreview(marker, metadata);
         });
-        marker.on('mouseout', () => this._hideMarkerHoverPreview());
+        marker.on('mouseout', () => {
+            if (!isDragging) this._hideMarkerHoverPreview();
+        });
         marker.on('dragstart', () => {
+            isDragging = true;
             clearTimeout(this._markerHoverTimeout);
             if (this._markerHoverPreview) {
                 this._markerHoverPreview.style.opacity = '0';
@@ -463,6 +469,28 @@ export default class MapController {
 
     clearGeoFilter() {
         this.geoFilterLayer.clearLayers();
+    }
+
+    showPreviewMarker(lat, lng) {
+        if (!this._previewMarker) {
+            const icon = L.divIcon({
+                className: 'preview-marker-container',
+                html: '<div class="preview-marker-pin"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            this._previewMarker = L.marker([lat, lng], { icon, zIndexOffset: 2000, interactive: false });
+        }
+        this._previewMarker.setLatLng([lat, lng]);
+        if (!this.map.hasLayer(this._previewMarker)) {
+            this._previewMarker.addTo(this.map);
+        }
+    }
+
+    hidePreviewMarker() {
+        if (this._previewMarker && this.map.hasLayer(this._previewMarker)) {
+            this.map.removeLayer(this._previewMarker);
+        }
     }
 
     // --- MAP NOTES ---

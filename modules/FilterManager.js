@@ -7,6 +7,7 @@ import ConservationFilter from './filters/ConservationFilter.js';
 import TypeFilter from './filters/TypeFilter.js';
 import PositioningFilter from './filters/PositioningFilter.js';
 import GeographicFilter from './filters/GeographicFilter.js';
+import TimelineFilter from './filters/TimelineFilter.js';
 
 export default class FilterManager {
     constructor(metadataManager, searchEngine, onFilterUpdate) {
@@ -20,6 +21,7 @@ export default class FilterManager {
         this.typeFilter = new TypeFilter(metadataManager, () => this.applyFilters(null));
         this.positioningFilter = new PositioningFilter(metadataManager, () => this.applyFilters(null));
         this.geographicFilter = new GeographicFilter(metadataManager, () => this.applyFilters(null));
+        this.timelineFilter = new TimelineFilter(metadataManager, () => this.applyFilters(null));
 
         this.currentImages = []; // All available images
     }
@@ -31,6 +33,7 @@ export default class FilterManager {
         this.conservationFilter.setImages(images);
         this.positioningFilter.setImages(images);
         this.geographicFilter.setImages(images);
+        this.timelineFilter.setImages(images);
     }
 
     renderControllers() {
@@ -39,16 +42,25 @@ export default class FilterManager {
         this.conservationFilter.render();
         this.positioningFilter.render(); // Ensure listener is attached
         this.geographicFilter.render();
+        this.timelineFilter.render();
     }
 
-    applyFilters(searchQuery = '', forceRefresh = false) {
-        // 1. Text Search (using SearchEngine)
+    async applyFilters(searchQuery = '', forceRefresh = false) {
+        // 1. Text Search (using SearchEngine or SearchWorkerClient)
         if (searchQuery !== null) this.lastQuery = searchQuery;
         const query = this.lastQuery || '';
 
-        let candidates = query
-            ? this.searchEngine.search(query).map(r => r.filename)
-            : [...this.currentImages];
+        let candidates;
+        if (query) {
+            if (this.searchWorkerClient) {
+                const results = await this.searchWorkerClient.search(query);
+                candidates = results.map(r => r.filename);
+            } else {
+                candidates = this.searchEngine.search(query).map(r => r.filename);
+            }
+        } else {
+            candidates = [...this.currentImages];
+        }
 
         // 2. Apply Modules — bucle único que clasifica en galería y mapa
         const galleryFiltered = [];
@@ -61,6 +73,7 @@ export default class FilterManager {
             if (!this.typeFilter.matches(filename)) continue;
             if (!this.conservationFilter.matches(filename)) continue;
             if (!this.geographicFilter.matches(filename)) continue;
+            if (!this.timelineFilter.matches(filename)) continue;
 
             // Mapa: requiere coordenadas válidas (ignora positioningFilter)
             const meta = this.metadataManager.getMetadata(filename);
@@ -109,16 +122,31 @@ export default class FilterManager {
         // También considerar búsqueda textual como filtro activo
         if (this.lastQuery && this.lastQuery.trim() !== '') return true;
 
+        // Timeline filter
+        if (this.timelineFilter.hasActiveFilter()) return true;
+
         return false;
     }
 
     /**
-     * Actualiza la clase CSS del botón del embudo según si hay filtros activos.
+     * Resetea todos los filtros y la búsqueda textual al estado inicial (todo activo).
+     */
+    resetAll() {
+        this.lastQuery = '';
+        this.timelineFilter.reset();
+        this.renderControllers(); // re-renderiza chips con todos activos
+        this.applyFilters('');
+    }
+
+    /**
+     * Actualiza la clase CSS del botón del embudo y la visibilidad del botón de limpiar filtros.
      */
     updateFilterIndicator() {
+        const active = this.hasActiveFilters();
         const btn = document.getElementById('toggleFiltersBtn');
-        if (!btn) return;
-        btn.classList.toggle('filters-applied', this.hasActiveFilters());
+        if (btn) btn.classList.toggle('filters-applied', active);
+        const clearBtn = document.getElementById('clearFiltersBtn');
+        if (clearBtn) clearBtn.classList.toggle('hidden', !active);
     }
 
     /**

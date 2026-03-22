@@ -14,11 +14,29 @@ export default class GalleryRenderer {
         this.lastSelectedImage = null;
         this._renderContext = null;
         this._lastFilesHash = null;
+
+        // IntersectionObserver for on-demand TIFF decoding
+        this._decodeObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const filename = card.dataset.filename;
+                    this._decodeObserver.unobserve(card);
+                    window.dispatchEvent(new CustomEvent('tiffDecodeRequest', { detail: { filename } }));
+                }
+            });
+        }, { rootMargin: '200px' });
     }
 
-    async renderGallery(files) {
-        if (this._renderContext) {
-            this._renderContext.cancelled = true;
+    renderGallery(files) {
+        // Desconectar observer anterior
+        if (this._observer) {
+            this._observer.disconnect();
+            this._observer = null;
+        }
+        // Desconectar decode observer
+        if (this._decodeObserver) {
+            this._decodeObserver.disconnect();
         }
 
         const newHash = files.join('|');
@@ -27,49 +45,60 @@ export default class GalleryRenderer {
             return;
         }
         this._lastFilesHash = newHash;
+        this._allFiles = files;
+        this._renderedCount = 0;
 
         this.galleryGridEl.innerHTML = '';
-        const context = { cancelled: false };
-        this._renderContext = context;
 
-        if (files.length > 0) {
-            this.filteredCountEl.innerHTML = `<b>${files.length}</b> res.`;
-            this.filteredCountEl.classList.remove('hidden');
-        } else {
+        if (files.length === 0) {
             this.filteredCountEl.textContent = `0 res.`;
             this.filteredCountEl.classList.add('hidden');
+            return;
         }
 
-        const batchSize = 25;
-        let index = 0;
+        this.filteredCountEl.innerHTML = `<b>${files.length}</b> res.`;
+        this.filteredCountEl.classList.remove('hidden');
 
-        const renderBatch = async () => {
-            if (context.cancelled) return;
-
-            const fragment = document.createDocumentFragment();
-            const end = Math.min(index + batchSize, files.length);
-
-            for (let i = index; i < end; i++) {
-                const card = this.createGalleryItem(files[i]);
-                if (this.selectedImages.has(files[i])) {
-                    card.classList.add('selected');
+        // IntersectionObserver: carga siguiente página al acercarse al sentinel
+        this._observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    this._observer.unobserve(entry.target);
+                    this._renderPage();
                 }
-                fragment.appendChild(card);
+            });
+        }, { rootMargin: '400px' });
+
+        this._renderPage();
+    }
+
+    _renderPage() {
+        const PAGE_SIZE = 60;
+
+        // Eliminar sentinel anterior si existe
+        const sentinel = this.galleryGridEl.querySelector('.gallery-sentinel');
+        if (sentinel) sentinel.remove();
+
+        const end = Math.min(this._renderedCount + PAGE_SIZE, this._allFiles.length);
+        const fragment = document.createDocumentFragment();
+
+        for (let i = this._renderedCount; i < end; i++) {
+            const card = this.createGalleryItem(this._allFiles[i]);
+            if (this.selectedImages.has(this._allFiles[i])) {
+                card.classList.add('selected');
             }
+            fragment.appendChild(card);
+        }
 
-            this.galleryGridEl.appendChild(fragment);
-            index = end;
+        this.galleryGridEl.appendChild(fragment);
+        this._renderedCount = end;
 
-            if (index < files.length) {
-                requestAnimationFrame(() => renderBatch());
-            }
-        };
-
-        if (files.length > 0) {
-            await renderBatch();
-        } else {
-            this.filteredCountEl.textContent = `0 resultados`;
-            this.filteredCountEl.classList.add('hidden');
+        // Añadir nuevo sentinel si quedan items
+        if (this._renderedCount < this._allFiles.length) {
+            const newSentinel = document.createElement('div');
+            newSentinel.className = 'gallery-sentinel';
+            this.galleryGridEl.appendChild(newSentinel);
+            this._observer.observe(newSentinel);
         }
     }
 
@@ -145,14 +174,20 @@ export default class GalleryRenderer {
                 <div class="meta-progress" title="Completitud de metadatos: ${pct}%"><div class="meta-progress-bar" style="width:${pct}%;--pct:${pct}"></div></div>
             </div>
         `;
+
+        // Register for on-demand TIFF decoding
+        if (meta._needsDecode && !meta._previewUrl) {
+            this._decodeObserver.observe(div);
+        }
+
         return div;
     }
 
     handleImageClick(e, filename) {
         if (e.shiftKey && this.lastSelectedImage) {
-            const cards = Array.from(this.galleryGridEl.children);
-            const startIdx = cards.findIndex(c => c.dataset.filename === this.lastSelectedImage);
-            const endIdx = cards.findIndex(c => c.dataset.filename === filename);
+            // Usar _allFiles para soportar virtual scroll (no todos los items están en el DOM)
+            const startIdx = (this._allFiles || []).indexOf(this.lastSelectedImage);
+            const endIdx = (this._allFiles || []).indexOf(filename);
 
             if (startIdx !== -1 && endIdx !== -1) {
                 const min = Math.min(startIdx, endIdx);
@@ -163,7 +198,7 @@ export default class GalleryRenderer {
                 }
 
                 for (let i = min; i <= max; i++) {
-                    this.selectedImages.add(cards[i].dataset.filename);
+                    this.selectedImages.add(this._allFiles[i]);
                 }
             }
             this.lastSelectedImage = filename;
