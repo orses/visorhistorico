@@ -449,7 +449,11 @@ export default class MetadataManager {
         const fused = {
             ...inferred,
             ...masterData,
-            ...manualData
+            ...manualData,
+            // filename y fullPath siempre reflejan el archivo físico real,
+            // nunca se sobreescriben por un match de subcadena en la BD maestra
+            filename: inferred.filename,
+            fullPath: inferred.fullPath,
         };
 
         // Identificar si es dato de usuario (Maestro o Manual)

@@ -68,37 +68,40 @@ export default class ExportService {
                 this.escapeCsvValue(meta.location || ''),
                 this.escapeCsvValue(meta.dateRange?.start || ''),
                 this.escapeCsvValue(meta.dateRange?.end || ''),
-                this.escapeCsvValue((meta.centuries || []).join('|')), // Usar pipe para separar múltiples siglos
+                this.escapeCsvValue((meta.centuries || []).join(',')), // Separar múltiples siglos con coma
                 this.escapeCsvValue(meta.reign || ''),
                 this.escapeCsvValue(meta.conservationStatus || ''),
                 this.escapeCsvValue(meta.sourceUrl || ''),
                 this.escapeCsvValue(meta.authorUrl || ''),
                 this.escapeCsvValue(meta.fullPath || ''),
-                hasCoords ? '1' : '0',
-                hasCoords ? meta.coordinates.lat : '',
-                hasCoords ? meta.coordinates.lng : '',
+                hasCoords ? '"1"' : '"0"',
+                hasCoords ? `"${meta.coordinates.lat}"` : '""',
+                hasCoords ? `"${meta.coordinates.lng}"` : '""',
                 this.escapeCsvValue(meta.notes || ''),
-                meta._fileSize || ''
-            ].join(';'); // Delimitador: punto y coma
+                `"${meta._fileSize || ''}"`
+            ].join('|'); // Delimitador: barra vertical
         });
 
         // Combine headers and rows
-        return [headers.join(';'), ...rows].join('\n');
+        return [headers.map(h => `"${h}"`).join('|'), ...rows].join('\n');
     }
 
     /**
-     * Escapes a value for CSV format.
-     * @param {string|number} value 
+     * Escapes a value for CSV format (delimitador |, calificador de texto ").
+     * - Saltos de línea → ↵ (evita campos multilínea que rompen parsers)
+     * - Barras verticales → ∣ (barra vertical matemática U+2223)
+     * - Comillas dobles internas → "" (estándar RFC 4180)
+     * - Cada campo queda envuelto en comillas dobles
+     * @param {string|number} value
      * @returns {string}
      */
     escapeCsvValue(value) {
-        if (value === null || value === undefined) return '';
-        const str = String(value);
-        // Si contiene punto y coma, comilla, o salto de línea, envolver en comillas y escapar comillas internas
-        if (str.includes(';') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
+        if (value === null || value === undefined) return '""';
+        const str = String(value)
+            .replace(/\r\n|\r|\n/g, ' ↵ ')  // saltos de párrafo → símbolo visible
+            .replace(/\|/g, '∣')            // pipe literal → barra vertical matemática
+            .replace(/"/g, '""');            // comillas internas → doble comilla (RFC 4180)
+        return `"${str}"`;
     }
 
     /**

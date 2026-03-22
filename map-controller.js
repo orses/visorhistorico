@@ -92,7 +92,8 @@ export default class MapController {
         // Mapa topográfico global con sombreado de relieve e isohipsas (OpenTopoMap)
         const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA) · © <a href="https://openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-            maxZoom: 17
+            maxNativeZoom: 17,
+            maxZoom: 20
         });
 
         // MTN topográfico IGN España (isohipsas + relieve oficial)
@@ -138,6 +139,38 @@ export default class MapController {
 
         // 3. Añadir control de selección de capas (bases + overlays)
         L.control.layers(this.baseLayers, overlays).addTo(this.map);
+
+        // 4. Control de enlace a la fuente del mapa activo
+        const sourceLinks = {
+            "Mapa":               'https://www.openstreetmap.org',
+            "Satélite":           'https://www.arcgis.com/apps/mapviewer',
+            "Topográfico":        'https://opentopomap.org',
+            "MTN IGN (España)":   'https://www.ign.es/iberpix/visor',
+            "Pedro Texeira (1656)":'https://www.ign.es/web/catalogo-cartoteca/-/catalogo/MainForm'
+        };
+
+        const SourceLinkControl = L.Control.extend({
+            options: { position: 'bottomleft' },
+            onAdd() {
+                const div = L.DomUtil.create('div', 'leaflet-source-link');
+                div.style.cssText = 'background:rgba(255,255,255,0.85);padding:3px 7px;border-radius:4px;font-size:11px;line-height:1.4;';
+                this._div = div;
+                return div;
+            },
+            update(layerName) {
+                const url = sourceLinks[layerName];
+                this._div.innerHTML = url
+                    ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0078a8;text-decoration:none;" title="Ver fuente del mapa">🔗 Ver fuente</a>`
+                    : '';
+            }
+        });
+        this._sourceLinkControl = new SourceLinkControl();
+        this._sourceLinkControl.addTo(this.map);
+        this._sourceLinkControl.update('Mapa'); // capa inicial por defecto
+
+        this.map.on('baselayerchange', (e) => {
+            this._sourceLinkControl.update(e.name);
+        });
 
         // Capas para marcadores (Clustering)
         this.markerLayer = L.markerClusterGroup({
