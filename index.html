@@ -53,23 +53,15 @@
                 </svg>
                 Cargar
             </button>
-            <button id="importBtn" class="btn btn-secondary" aria-label="Importar metadatos desde JSON">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                <span class="visually-hidden">Importar JSON</span>
-            </button>
-            <button id="exportBtn" class="btn btn-secondary" aria-label="Exportar metadatos a JSON">
+<button id="exportBtn" class="btn btn-secondary" title="Guardar metadatos como JSON" aria-label="Exportar metadatos a JSON">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                <span class="visually-hidden">Exportar JSON</span>
+                <span class="visually-hidden">Guardar JSON</span>
             </button>
-            <button id="statsBtn" class="btn btn-secondary" aria-label="Ver estadísticas de la colección">
+            <button id="statsBtn" class="btn btn-secondary" title="Ver estadísticas de la colección" aria-label="Ver estadísticas de la colección">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
                     <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -77,14 +69,14 @@
                 </svg>
                 <span class="visually-hidden">Estadísticas</span>
             </button>
-            <button id="optimizeBtn" class="btn btn-secondary" aria-label="Optimizar y limpiar metadatos">
+            <button id="optimizeBtn" class="btn btn-secondary" title="Optimizar y limpiar metadatos" aria-label="Optimizar y limpiar metadatos">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
                 <span class="visually-hidden">Optimizar</span>
             </button>
-            <button id="shortcutsBtn" class="btn btn-secondary" aria-label="Ver atajos de teclado" aria-haspopup="dialog">
+            <button id="shortcutsBtn" class="btn btn-secondary" title="Atajos de teclado" aria-label="Ver atajos de teclado" aria-haspopup="dialog">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                     <line x1="6" y1="8" x2="6" y2="8"></line>
@@ -136,12 +128,17 @@
                             <button class="toggle-btn" data-cols="4" aria-label="4 columnas" aria-pressed="false">4</button>
                         </div>
 
-                        <button class="toggle-btn toolbar-action-btn active" id="toggleFiltersBtn" aria-label="Mostrar u ocultar filtros" aria-expanded="true" aria-controls="filtersCollapsible">
+                        <button class="toggle-btn toolbar-action-btn active" id="toggleFiltersBtn" title="Mostrar/ocultar filtros" aria-label="Mostrar u ocultar filtros" aria-expanded="true" aria-controls="filtersCollapsible">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                             </svg>
                         </button>
-                        <button class="toggle-btn toolbar-action-btn" id="expandGalleryBtn" aria-label="Expandir galería (Alt+G)" aria-pressed="false">
+                        <button id="clearFiltersBtn" class="toggle-btn toolbar-action-btn hidden" title="Limpiar todos los filtros" aria-label="Limpiar todos los filtros">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                                <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <button class="toggle-btn toolbar-action-btn" id="expandGalleryBtn" title="Expandir galería (Alt+G)" aria-label="Expandir galería (Alt+G)" aria-pressed="false">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                                 <polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline>
                                 <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
@@ -152,9 +149,6 @@
 
                 <div id="filtersCollapsible" class="filters-collapsible" aria-label="Filtros">
                     <div class="filters-wrapper">
-                        <button id="clearFiltersBtn" class="clear-filters-btn hidden" aria-label="Limpiar todos los filtros">
-                            ✕ Limpiar filtros
-                        </button>
                         <div class="type-filters" id="typeFilters"></div>
                         <div class="century-filters" id="centuryFilters"></div>
                         <div class="conservation-filters" id="conservationFilters"></div>
@@ -175,7 +169,7 @@
         <!-- 2. Map Panel (Center) -->
         <main class="map-panel" aria-label="Mapa de ubicaciones">
             <div id="map" role="application" aria-label="Mapa interactivo de Leaflet"></div>
-            <button id="reopenDetailsPanelBtn" class="panel-reopen-btn" aria-label="Mostrar panel de metadatos">
+            <button id="reopenDetailsPanelBtn" class="panel-reopen-btn" title="Mostrar panel de metadatos" aria-label="Mostrar panel de metadatos">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
@@ -184,7 +178,7 @@
 
         <!-- 3. Details Panel (Right) -->
         <aside class="metadata-panel" id="metadataPanel" aria-label="Detalles de la imagen seleccionada">
-            <button id="toggleDetailsPanelBtn" class="panel-collapse-btn" aria-label="Ocultar panel de metadatos" title="Ocultar panel">
+            <button id="toggleDetailsPanelBtn" class="panel-collapse-btn" title="Ocultar panel de metadatos" aria-label="Ocultar panel de metadatos">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
@@ -400,7 +394,6 @@
         </div>
     </div>
 
-    <input type="file" id="importInput" accept=".json" hidden aria-hidden="true">
 
     <script type="module" src="/app.js"></script>
 </body>

@@ -480,26 +480,10 @@ body {
     background: rgba(255, 255, 255, 0.06) !important;
 }
 
-/* Botón limpiar filtros */
-.clear-filters-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin: 6px 8px 2px;
-    padding: 4px 10px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+/* Botón limpiar filtros (icono, reutiliza .toggle-btn .toolbar-action-btn) */
+#clearFiltersBtn:not(.hidden) {
     color: var(--accent-primary);
-    background: rgba(0, 242, 254, 0.08);
-    border: 1px solid rgba(0, 242, 254, 0.3);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-}
-.clear-filters-btn:hover {
-    background: rgba(0, 242, 254, 0.18);
-    border-color: var(--accent-primary);
+    border-color: rgba(0, 242, 254, 0.4);
 }
 
 /* Botón colapsar panel — flota sobre el borde izquierdo del panel */
