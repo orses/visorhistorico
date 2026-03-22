@@ -348,6 +348,7 @@ body {
 
 /* 1. GALLERY PANEL (LEFT) */
 .gallery-panel {
+    position: relative;
     width: var(--width-gallery);
     min-width: var(--width-gallery);
     background: var(--bg-secondary);

@@ -483,8 +483,8 @@ export default class ModalManager {
         // Reset selección a "todos"
         const allRadio = this.elements.exportModal?.querySelector('input[value="all"]');
         if (allRadio) allRadio.checked = true;
-        const csvRadio = this.elements.exportModal?.querySelector('input[value="csv"]');
-        if (csvRadio) csvRadio.checked = true;
+        const jsonRadio = this.elements.exportModal?.querySelector('input[value="json"]');
+        if (jsonRadio) jsonRadio.checked = true;
 
         this.elements.exportModal.classList.add('active');
     }
@@ -495,7 +495,7 @@ export default class ModalManager {
 
     _doExport() {
         const scope  = this.elements.exportModal?.querySelector('input[name="exportScope"]:checked')?.value  || 'all';
-        const format = this.elements.exportModal?.querySelector('input[name="exportFormat"]:checked')?.value || 'csv';
+        const format = this.elements.exportModal?.querySelector('input[name="exportFormat"]:checked')?.value || 'json';
 
         let filenames = null;
         if (scope === 'filtered') {
