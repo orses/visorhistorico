@@ -1334,6 +1334,14 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     color: #00C851;
 }
 
+/* Modales genéricos */
+.modal-content {
+    background: var(--bg-panel, #1a1a2e);
+    border-radius: 8px;
+    border: 1px solid var(--border-light, #333);
+    overflow: hidden;
+}
+
 /* Modales Ampliados */
 .modal-content-large {
     background: var(--bg-panel);
