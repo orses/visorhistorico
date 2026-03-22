@@ -717,16 +717,21 @@ export default class MapController {
             applyClip();
         };
         const onUp = () => {
+            this.map.dragging.enable();
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup',   onUp);
             window.removeEventListener('touchmove', onMove);
             window.removeEventListener('touchend',  onUp);
         };
-        slider.addEventListener('mousedown',  () => {
+        slider.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            this.map.dragging.disable();
             window.addEventListener('mousemove', onMove);
             window.addEventListener('mouseup',   onUp);
         });
-        slider.addEventListener('touchstart', () => {
+        slider.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            this.map.dragging.disable();
             window.addEventListener('touchmove', onMove, { passive: true });
             window.addEventListener('touchend',  onUp);
         });
