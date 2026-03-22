@@ -105,8 +105,9 @@ async function init() {
     });
 
     // Conectar getters de listas de imágenes en modalManager (para exportación filtrada)
-    modalManager.getFilteredImages = () => state.filteredImages;
-    modalManager.getAllImages = () => state.currentImages;
+    modalManager.getFilteredImages  = () => state.filteredImages;
+    modalManager.getAllImages        = () => state.currentImages;
+    modalManager.getSelectedImages  = () => state.selectedImagesList;
 
     // Conectar comparador de épocas
     uiManager.onCompare = (a, b) => modalManager.openComparatorModal(a, b);
@@ -287,25 +288,37 @@ function setupGlobalListeners() {
         }
     });
 
-    // Import/Export Metadata (Legacy buttons, routed through managers if needed or kept simple)
-    document.getElementById('exportBtn')?.addEventListener('click', () => {
-        const filtered = state.filteredImages;
-        const total = state.currentImages;
-        if (filtered.length > 0 && filtered.length < total.length) {
-            const choice = confirm(
-                `¿Qué deseas exportar?\n\nAceptar → Exportar filtro actual (${filtered.length} imágenes)\nCancelar → Exportar todo (${total.length} imágenes)`
-            );
-            if (choice) {
-                metadataManager.exportToJSON(filtered);
-                uiManager.showToast(`Metadatos exportados (${filtered.length} imágenes)`, 'success');
-            } else {
-                metadataManager.exportToJSON();
-                uiManager.showToast('Metadatos exportados (colección completa)', 'success');
-            }
+    // Importar metadatos desde JSON o CSV
+    document.getElementById('importBtn')?.addEventListener('click', () => {
+        document.getElementById('importFileInput')?.click();
+    });
+
+    document.getElementById('importFileInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = ''; // reset para permitir reimportar el mismo archivo
+
+        const text = await file.text();
+        const isCsv = file.name.toLowerCase().endsWith('.csv');
+
+        let ok;
+        if (isCsv) {
+            ok = metadataManager.importFromCSV(text);
         } else {
-            metadataManager.exportToJSON();
-            uiManager.showToast('Metadatos exportados', 'success');
+            ok = metadataManager.importFromJSON(text);
         }
+
+        if (ok) {
+            filterManager.applyFilters(null);
+            uiManager.showToast(`Metadatos importados desde ${file.name}`, 'success');
+        } else {
+            uiManager.showToast(`Error al importar ${file.name}. Revisa el formato.`, 'error');
+        }
+    });
+
+    // Exportar → abre el modal de descarga
+    document.getElementById('exportBtn')?.addEventListener('click', () => {
+        modalManager.openExportModal();
     });
 
     // Borrar todo el almacenamiento del navegador

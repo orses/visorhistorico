@@ -128,7 +128,7 @@ export default class MetadataPanelRenderer {
                 </div>
                 <div class="form-group-compact full-width">
                     <label class="form-label" for="field-fullPath">Ruta completa del archivo</label>
-                    <textarea id="field-fullPath" class="form-control form-control-sm form-control-filepath" data-field="fullPath" readonly aria-readonly="true">${val(meta.fullPath || meta._originalPath || meta.path || meta._path || meta.filename, '')}</textarea>
+                    <textarea id="field-fullPath" class="form-control form-control-sm form-control-filepath" data-field="fullPath" title="Editable: corrige la ruta si el archivo ha sido movido o renombrado">${val(meta.fullPath || meta._originalPath || meta.path || meta._path || meta.filename, '')}</textarea>
                 </div>
             </div>
 

@@ -685,11 +685,13 @@ export default class MetadataManager {
         const url = URL.createObjectURL(blob);
 
         const link = document.createElement('a');
+        const downloadName = `coleccion-historia-metadata_${new Date().toISOString().split('T')[0]}.json`;
         link.href = url;
-        link.download = `coleccion-historia-metadata_${new Date().toISOString().split('T')[0]}.json`;
+        link.download = downloadName;
         link.click();
 
         URL.revokeObjectURL(url);
+        return downloadName;
     }
 
     // Validar una entrada individual del JSON importado
@@ -757,6 +759,115 @@ export default class MetadataManager {
         }
     }
 
+
+    // Importar desde CSV (mismo formato que exporta ExportService)
+    importFromCSV(csvText) {
+        try {
+            const lines = csvText.replace(/\r\n/g, '\n').split('\n').filter(l => l.trim());
+            if (lines.length < 2) { logger.error('importFromCSV: archivo vacío o sin datos'); return false; }
+
+            const headers = this._parseCSVRow(lines[0]);
+
+            // Restaurar valores escapados al importar
+            const restore = v => (v || '').replace(/ ↵ /g, '\n').replace(/∣/g, '|');
+
+            const imported = {};
+            for (let i = 1; i < lines.length; i++) {
+                const row = this._parseCSVRow(lines[i]);
+                if (row.length < 2) continue;
+
+                const get = col => restore(row[headers.indexOf(col)] ?? '');
+
+                const filename = get('filename');
+                if (!filename) continue;
+
+                const latStr = get('latitude');
+                const lngStr = get('longitude');
+                const lat = parseFloat(latStr);
+                const lng = parseFloat(lngStr);
+                const hasCoords = get('hasCoordinates') === '1' && !isNaN(lat) && !isNaN(lng);
+
+                const centuries = get('centuries')
+                    ? get('centuries').split(',').map(s => s.trim()).filter(Boolean)
+                    : [];
+
+                const startYear = parseInt(get('dateRange_start'));
+                const endYear   = parseInt(get('dateRange_end'));
+
+                const entry = {
+                    type:               get('type')               || null,
+                    mainSubject:        get('mainSubject')        || null,
+                    author:             get('author')             || null,
+                    location:           get('location')           || null,
+                    dateRange: {
+                        start: isNaN(startYear) ? null : startYear,
+                        end:   isNaN(endYear)   ? null : endYear,
+                    },
+                    centuries,
+                    reign:              get('reign')              || null,
+                    conservationStatus: get('conservationStatus') || 'Sin clasificar',
+                    sourceUrl:          get('sourceUrl')          || null,
+                    authorUrl:          get('authorUrl')          || null,
+                    fullPath:           get('fullPath')           || filename,
+                    notes:              get('notes')              || '',
+                    _isUserMetadata: true,
+                };
+
+                if (hasCoords) {
+                    entry.coordinates = { lat, lng };
+                    entry._userCoords = true;
+                }
+
+                // Eliminar campos nulos para no interferir con la inferencia
+                for (const k of Object.keys(entry)) {
+                    if (entry[k] === null || entry[k] === '') delete entry[k];
+                }
+                if (entry.dateRange && entry.dateRange.start === null && entry.dateRange.end === null) {
+                    delete entry.dateRange;
+                }
+
+                imported[filename] = entry;
+            }
+
+            const count = Object.keys(imported).length;
+            if (count === 0) { logger.error('importFromCSV: ninguna fila válida'); return false; }
+
+            logger.log(`importFromCSV: ${count} filas parseadas, delegando a importFromJSON`);
+            return this.importFromJSON(imported);
+        } catch (e) {
+            logger.error('Error al importar CSV:', e);
+            return false;
+        }
+    }
+
+    // Parser de una fila CSV con delimitador | y calificador "
+    _parseCSVRow(line) {
+        const fields = [];
+        let i = 0;
+        while (i <= line.length) {
+            if (i === line.length) { fields.push(''); break; }
+            if (line[i] === '"') {
+                i++;
+                let field = '';
+                while (i < line.length) {
+                    if (line[i] === '"') {
+                        if (line[i + 1] === '"') { field += '"'; i += 2; }
+                        else { i++; break; }
+                    } else {
+                        field += line[i++];
+                    }
+                }
+                fields.push(field);
+                if (line[i] === '|') i++;
+            } else {
+                let field = '';
+                while (i < line.length && line[i] !== '|') field += line[i++];
+                fields.push(field);
+                if (line[i] === '|') i++;
+            }
+        }
+        return fields;
+    }
 
     // Filtrar metadatos
     filter(criteria) {

@@ -53,6 +53,15 @@
                 </svg>
                 Cargar
             </button>
+<input type="file" id="importFileInput" accept=".json,.csv" style="display:none" aria-hidden="true">
+<button id="importBtn" class="btn btn-secondary" title="Importar metadatos desde JSON o CSV" aria-label="Importar metadatos desde JSON o CSV">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span class="visually-hidden">Importar</span>
+            </button>
 <button id="exportBtn" class="btn btn-secondary" title="Guardar metadatos como JSON" aria-label="Exportar metadatos a JSON">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -84,6 +93,14 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
                 </svg>
                 <span class="visually-hidden">Borrar caché</span>
+            </button>
+            <button id="helpBtn" class="btn btn-secondary" title="Ayuda y guía de uso" aria-label="Abrir ayuda" aria-haspopup="dialog">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span class="visually-hidden">Ayuda</span>
             </button>
             <button id="shortcutsBtn" class="btn btn-secondary" title="Atajos de teclado" aria-label="Ver atajos de teclado" aria-haspopup="dialog">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
@@ -403,6 +420,152 @@
         </div>
     </div>
 
+
+    <!-- Modal: Descarga de datos -->
+    <div id="exportModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle" aria-hidden="true">
+        <div class="modal-content" style="max-width:440px;width:100%;">
+            <div class="modal-header">
+                <h2 id="exportModalTitle">Descargar datos</h2>
+                <button class="close-modal-inline" id="closeExportModal" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;">
+                <fieldset style="border:1px solid #333;border-radius:6px;padding:1rem;">
+                    <legend style="color:#9ca3af;font-size:0.8rem;padding:0 6px;">¿Qué exportar?</legend>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+                        <input type="radio" name="exportScope" value="all" checked> Todos los archivos de la colección
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;" id="exportScopeFilteredLabel">
+                        <input type="radio" name="exportScope" value="filtered"> Solo los filtrados actualmente (<span id="exportFilteredCount">0</span>)
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;" id="exportScopeSelectedLabel">
+                        <input type="radio" name="exportScope" value="selected"> Solo los seleccionados (<span id="exportSelectedCount">0</span>)
+                    </label>
+                </fieldset>
+                <fieldset style="border:1px solid #333;border-radius:6px;padding:1rem;">
+                    <legend style="color:#9ca3af;font-size:0.8rem;padding:0 6px;">Formato</legend>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+                        <input type="radio" name="exportFormat" value="csv" checked>
+                        <span><strong>CSV</strong> — compatible con Excel, LibreOffice Calc, bases de datos</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                        <input type="radio" name="exportFormat" value="json">
+                        <span><strong>JSON</strong> — formato nativo del visor, permite reimportar todos los metadatos</span>
+                    </label>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelExportBtn">Cancelar</button>
+                <button class="btn btn-primary" id="confirmExportBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ayuda -->
+    <div id="helpModal" class="overlay-backdrop" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle" aria-hidden="true">
+        <div class="modal-content-large">
+            <div class="modal-header">
+                <h2 id="helpModalTitle">Guía de uso del Visor Histórico</h2>
+                <button class="close-modal-inline" id="closeHelpModal" aria-label="Cerrar ayuda">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;overflow-y:auto;max-height:70vh;">
+                <div style="display:flex;flex-direction:column;gap:2rem;color:#d1d5db;font-size:0.88rem;line-height:1.7;">
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">📁 Cargar una colección</h3>
+                        <p>Pulsa <strong>Cargar</strong> en la barra superior y selecciona la carpeta que contiene tus imágenes. El visor escanea todos los archivos <code>jpg, png, webp, tif, tiff</code> de forma recursiva e infiere metadatos automáticamente a partir del nombre del archivo.</p>
+                        <p style="margin-top:0.5rem;"><strong>Convenio de nombre recomendado:</strong><br>
+                        <code>Ciudad - Asunto principal - Año - Siglo - Reinado [Autor] - descripción.ext</code><br>
+                        Ejemplo: <code>Madrid - Puerta del Sol - 1856 - XIX - Isabel II [Laurent].jpg</code></p>
+                        <p style="margin-top:0.5rem;">Si existe un archivo <code>.json</code> de metadatos en la misma carpeta, se carga automáticamente como base maestra.</p>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">🔍 Búsqueda y filtros</h3>
+                        <p>La caja de búsqueda admite texto libre y operadores avanzados:</p>
+                        <ul style="padding-left:1.2rem;margin-top:0.4rem;">
+                            <li><code>recoletos puerta</code> — AND implícito (deben aparecer ambas palabras)</li>
+                            <li><code>recoletos OR retiro</code> — al menos uno de los dos términos</li>
+                            <li><code>madrid -plano</code> o <code>madrid NOT plano</code> — excluir término</li>
+                            <li><code>"puerta de alcalá"</code> — frase exacta entre comillas</li>
+                            <li><code>autor:Laurent</code>, <code>siglo:XIX</code>, <code>año:1856</code>, <code>conservacion:Desaparecido</code> — búsqueda por campo</li>
+                        </ul>
+                        <p style="margin-top:0.5rem;">Los <strong>chips de filtro</strong> bajo la barra de búsqueda permiten acotar por siglo, tipología, estado de conservación y posicionamiento. Haz clic en un chip para desactivarlo (excluye esa categoría).</p>
+                        <p style="margin-top:0.5rem;">El <strong>filtro de línea de tiempo</strong> permite definir un rango de años con dos sliders.</p>
+                        <p style="margin-top:0.5rem;">El botón de <strong>embudo</strong> muestra u oculta el panel de filtros. Cuando hay filtros activos, aparece un punto de color sobre el icono.</p>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">🗺️ Mapa</h3>
+                        <p>Las imágenes con coordenadas aparecen como marcadores en el mapa. Los marcadores se agrupan en clusters al alejar la vista.</p>
+                        <ul style="padding-left:1.2rem;margin-top:0.4rem;">
+                            <li><strong>Clic en marcador</strong> — selecciona la imagen y muestra sus metadatos en el panel.</li>
+                            <li><strong>Ctrl + Clic en el mapa</strong> — asigna esa posición a la imagen seleccionada.</li>
+                            <li><strong>Arrastrar marcador</strong> — reposiciona la imagen con precisión.</li>
+                            <li><strong>Capas</strong> — cambia entre Mapa, Satélite, Topográfico, MTN IGN y Pedro Texeira (1656). El botón «Ver fuente» lleva al visor oficial de cada proveedor.</li>
+                            <li><strong>Relieve IGN</strong> — capa transparente superponible a cualquier base.</li>
+                            <li><strong>Filtro geográfico</strong> — dibuja un radio o polígono para limitar los resultados a una zona.</li>
+                            <li><strong>Notas en el mapa</strong> — icono 📝 en el mapa para añadir anotaciones geolocalizadas visibles a partir del zoom 17.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">🖼️ Galería y selección</h3>
+                        <ul style="padding-left:1.2rem;">
+                            <li><strong>Clic</strong> — selecciona una imagen y muestra sus metadatos.</li>
+                            <li><strong>Ctrl + Clic</strong> — selección múltiple no contigua.</li>
+                            <li><strong>Shift + Clic</strong> — selección de rango entre dos imágenes.</li>
+                            <li><strong>Doble clic</strong> — abre la imagen en el visor a pantalla completa con zoom y rotación.</li>
+                            <li>Los botones <strong>1 · 2 · 4</strong> cambian el número de columnas de la cuadrícula.</li>
+                            <li>La barra de progreso en cada miniatura indica la completitud de sus metadatos.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">📋 Panel de metadatos</h3>
+                        <p>Al seleccionar una imagen, el panel derecho muestra todos sus metadatos editables. Los cambios se guardan automáticamente al salir del campo (o con <kbd>Ctrl+G</kbd>). <kbd>Ctrl+Z</kbd> deshace el último cambio de cada campo.</p>
+                        <p style="margin-top:0.5rem;">Con varias imágenes seleccionadas aparece el panel de <strong>edición en lote</strong>, que permite modificar un campo para todas a la vez.</p>
+                        <p style="margin-top:0.5rem;">El campo <strong>Ruta completa del archivo</strong> es editable: si mueves o renombras un archivo en disco, actualiza aquí la ruta para mantener la referencia correcta en los metadatos.</p>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">💾 Importar y exportar datos</h3>
+                        <ul style="padding-left:1.2rem;">
+                            <li><strong>Exportar (↑)</strong> — descarga los metadatos en CSV o JSON. Puedes exportar toda la colección, solo los filtrados o solo los seleccionados.</li>
+                            <li><strong>Importar (↓)</strong> — carga un archivo <code>.json</code> o <code>.csv</code> previamente exportado. Los metadatos importados se fusionan con los existentes como base maestra, complementando la inferencia automática.</li>
+                            <li>El <strong>JSON</strong> es el formato nativo: conserva todos los campos incluidas las ediciones manuales y permite reimportar sin pérdida.</li>
+                            <li>El <strong>CSV</strong> usa <code>|</code> como delimitador y comillas dobles como calificador de texto, lo que garantiza compatibilidad con Excel, LibreOffice Calc y bases de datos.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">📊 Estadísticas</h3>
+                        <p>El botón de estadísticas (icono de barras) muestra gráficos estáticos sobre la distribución de la colección: distribución temporal por siglo, tipología documental y estado de conservación. Desde ese modal también puedes descargar el dataset.</p>
+                    </section>
+
+                    <section>
+                        <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">⚙️ Otras herramientas</h3>
+                        <ul style="padding-left:1.2rem;">
+                            <li><strong>Optimizar</strong> (✓) — limpia entradas huérfanas y datos obsoletos del almacenamiento.</li>
+                            <li><strong>Borrar caché</strong> (🗑️) — elimina todo el almacenamiento del navegador y recarga desde cero. Útil si hay datos corruptos o para empezar de nuevo.</li>
+                            <li><strong>Comparador</strong> — selecciona dos imágenes con Ctrl+Clic y activa el comparador para ver ambas en paralelo.</li>
+                            <li><strong>Dar de baja</strong> — excluye una imagen de la sesión actual sin borrarla del disco. Vuelve a aparecer al recargar la carpeta.</li>
+                        </ul>
+                    </section>
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closeHelpBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="/app.js"></script>
 </body>

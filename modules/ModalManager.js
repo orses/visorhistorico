@@ -32,6 +32,16 @@ export default class ModalManager {
             closeStatsBtn: document.getElementById('closeStatsBtn'),
             downloadDatasetBtn: document.getElementById('downloadDatasetBtn'),
 
+            exportModal: document.getElementById('exportModal'),
+            closeExportModal: document.getElementById('closeExportModal'),
+            cancelExportBtn: document.getElementById('cancelExportBtn'),
+            confirmExportBtn: document.getElementById('confirmExportBtn'),
+
+            helpModal: document.getElementById('helpModal'),
+            closeHelpModal: document.getElementById('closeHelpModal'),
+            closeHelpBtn: document.getElementById('closeHelpBtn'),
+            helpBtn: document.getElementById('helpBtn'),
+
             statsBtn: document.getElementById('statsBtn')
         };
 
@@ -59,18 +69,26 @@ export default class ModalManager {
         this.elements.statsBtn?.addEventListener('click', () => this.openStatsModal());
         this.elements.closeStatsModal?.addEventListener('click', () => this.closeStatsModal());
         this.elements.closeStatsBtn?.addEventListener('click', () => this.closeStatsModal());
+        // Descarga desde modal de estadísticas → abre el modal de exportación
         this.elements.downloadDatasetBtn?.addEventListener('click', () => {
-            const filtered = this.getFilteredImages ? this.getFilteredImages() : null;
-            const total = this.getAllImages ? this.getAllImages() : null;
-            let exportFilenames = null;
-            if (filtered && total && filtered.length > 0 && filtered.length < total.length) {
-                const choice = confirm(
-                    `¿Qué deseas descargar?\n\nAceptar → Dataset del filtro actual (${filtered.length} imágenes)\nCancelar → Dataset completo (${total.length} imágenes)`
-                );
-                if (choice) exportFilenames = filtered;
-            }
-            const filename = this.exportService.downloadScientificDataset(exportFilenames);
-            this.uiManager.showToast(`Dataset descargado: ${filename}`, 'success');
+            this.closeStatsModal();
+            this.openExportModal();
+        });
+
+        // Export Modal
+        this.elements.closeExportModal?.addEventListener('click', () => this.closeExportModal());
+        this.elements.cancelExportBtn?.addEventListener('click', () => this.closeExportModal());
+        this.elements.exportModal?.addEventListener('click', e => {
+            if (e.target === this.elements.exportModal) this.closeExportModal();
+        });
+        this.elements.confirmExportBtn?.addEventListener('click', () => this._doExport());
+
+        // Help Modal
+        this.elements.helpBtn?.addEventListener('click', () => this.openHelpModal());
+        this.elements.closeHelpModal?.addEventListener('click', () => this.closeHelpModal());
+        this.elements.closeHelpBtn?.addEventListener('click', () => this.closeHelpModal());
+        this.elements.helpModal?.addEventListener('click', e => {
+            if (e.target === this.elements.helpModal) this.closeHelpModal();
         });
 
         // Global Keydown for ESC and Zoom shortcuts
@@ -80,6 +98,8 @@ export default class ModalManager {
                 if (this.elements.editModal.classList.contains('active')) this.closeEditModal();
                 if (this.elements.statsModal.classList.contains('active')) this.closeStatsModal();
                 if (this.elements.shortcutsModal?.classList.contains('active')) this.closeShortcutsModal();
+                if (this.elements.exportModal?.classList.contains('active')) this.closeExportModal();
+                if (this.elements.helpModal?.classList.contains('active')) this.closeHelpModal();
             }
 
             // Atajos de Edición (solo si el modal de edición está abierto)
@@ -439,6 +459,69 @@ export default class ModalManager {
         document.getElementById('closeComparatorBtn').onclick = () => modal.classList.remove('active');
         modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('active'); };
         modal.classList.add('active');
+    }
+
+    // --- EXPORT MODAL ---
+    openExportModal() {
+        const filtered = this.getFilteredImages ? this.getFilteredImages() : [];
+        const selected = this.getSelectedImages ? this.getSelectedImages() : [];
+        const total    = this.getAllImages ? this.getAllImages() : [];
+
+        // Actualizar contadores
+        document.getElementById('exportFilteredCount').textContent = filtered.length;
+        document.getElementById('exportSelectedCount').textContent = selected.length;
+
+        // Deshabilitar opciones sin datos
+        const filteredLabel = document.getElementById('exportScopeFilteredLabel');
+        const selectedLabel = document.getElementById('exportScopeSelectedLabel');
+        const filteredRadio = filteredLabel?.querySelector('input');
+        const selectedRadio = selectedLabel?.querySelector('input');
+
+        if (filteredRadio) filteredRadio.disabled = filtered.length === 0 || filtered.length === total.length;
+        if (selectedRadio) selectedRadio.disabled = selected.length === 0;
+
+        // Reset selección a "todos"
+        const allRadio = this.elements.exportModal?.querySelector('input[value="all"]');
+        if (allRadio) allRadio.checked = true;
+        const csvRadio = this.elements.exportModal?.querySelector('input[value="csv"]');
+        if (csvRadio) csvRadio.checked = true;
+
+        this.elements.exportModal.classList.add('active');
+    }
+
+    closeExportModal() {
+        this.elements.exportModal?.classList.remove('active');
+    }
+
+    _doExport() {
+        const scope  = this.elements.exportModal?.querySelector('input[name="exportScope"]:checked')?.value  || 'all';
+        const format = this.elements.exportModal?.querySelector('input[name="exportFormat"]:checked')?.value || 'csv';
+
+        let filenames = null;
+        if (scope === 'filtered') {
+            filenames = this.getFilteredImages ? this.getFilteredImages() : null;
+        } else if (scope === 'selected') {
+            filenames = this.getSelectedImages ? this.getSelectedImages() : null;
+        }
+
+        let downloadedName;
+        if (format === 'csv') {
+            downloadedName = this.exportService.downloadScientificDataset(filenames);
+        } else {
+            downloadedName = this.metadataManager.exportToJSON(filenames || undefined);
+        }
+
+        this.closeExportModal();
+        this.uiManager.showToast(`Descargado: ${downloadedName || 'archivo'}`, 'success');
+    }
+
+    // --- HELP MODAL ---
+    openHelpModal() {
+        this.elements.helpModal?.classList.add('active');
+    }
+
+    closeHelpModal() {
+        this.elements.helpModal?.classList.remove('active');
     }
 
     // --- STATS MODAL ---
