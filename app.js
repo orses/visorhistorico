@@ -153,31 +153,34 @@ async function init() {
     // Initial State: Empty until load
     uiManager.renderGallery([]);
 
-    // Intentar restaurar sesión anterior de forma transparente
+    // Intentar restaurar sesión anterior automáticamente si ya tiene permiso
     state.pendingDirectoryHandle = await tryRestoreSession(mapController);
+    if (state.pendingDirectoryHandle) {
+        const perm = await state.pendingDirectoryHandle.queryPermission({ mode: 'read' });
+        if (perm === 'granted') {
+            // Permiso ya concedido: restaurar sin necesitar clic del usuario
+            loadImagesFromDirectory(state.pendingDirectoryHandle);
+        }
+        // Si perm === 'prompt': mantener el botón "Recuperar Sesión" para que el usuario lo confirme
+    }
 }
 
 function setupGlobalListeners() {
     // Load Button
     document.getElementById('loadDirBtn')?.addEventListener('click', async () => {
         if (state.pendingDirectoryHandle) {
-            // Intentar usar el handle guardado
+            // El botón muestra "Recuperar Sesión": pedir permiso explícito y restaurar
             const handle = state.pendingDirectoryHandle;
-
-            // Verificar si tenemos permiso
             const options = { mode: 'read' };
-            if (await handle.queryPermission(options) === 'granted') {
+            const perm = await handle.requestPermission(options);
+            if (perm === 'granted') {
                 loadImagesFromDirectory(handle);
             } else {
-                // Pedir permiso explícitamente (cuenta como gesto del usuario)
-                if (await handle.requestPermission(options) === 'granted') {
-                    loadImagesFromDirectory(handle);
-                } else {
-                    // Si el usuario deniega el permiso del antiguo, abrir selector nuevo
-                    loadImagesFromDirectory();
-                }
+                // Denegado: abrir selector nuevo para carga limpia
+                loadImagesFromDirectory();
             }
         } else {
+            // Sin sesión previa: siempre abre selector limpio
             loadImagesFromDirectory();
         }
     });
@@ -324,8 +327,24 @@ function setupGlobalListeners() {
         if (!file) return;
         const text = await file.text();
         if (metadataManager.importFromJSON(text)) {
-            uiManager.showToast('Metadatos importados', 'success');
-            // Refresh logic?
+            // Si hay imágenes ya cargadas, refrescar la galería con los nuevos metadatos
+            if (state.currentImages.length > 0) {
+                filterManager.applyFilters(null);
+                uiManager.showToast(`Metadatos actualizados (${state.currentImages.length} imágenes)`, 'success');
+            } else if (state.pendingDirectoryHandle) {
+                // Sin directorio cargado pero con handle guardado: cargar automáticamente
+                uiManager.showToast('Metadatos importados. Cargando directorio...', 'success');
+                const perm = await state.pendingDirectoryHandle.queryPermission({ mode: 'read' });
+                if (perm === 'granted') {
+                    loadImagesFromDirectory(state.pendingDirectoryHandle);
+                } else if (await state.pendingDirectoryHandle.requestPermission({ mode: 'read' }) === 'granted') {
+                    loadImagesFromDirectory(state.pendingDirectoryHandle);
+                } else {
+                    uiManager.showToast('Metadatos importados. Carga el directorio de imágenes para ver la galería.', 'normal');
+                }
+            } else {
+                uiManager.showToast('Metadatos importados. Carga el directorio de imágenes para ver la galería.', 'success');
+            }
         } else {
             uiManager.showToast('Error al importar', 'error');
         }
