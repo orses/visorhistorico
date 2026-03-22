@@ -129,7 +129,7 @@ export default class MapController {
             closePopupOnClick: true
         });
 
-        // 3. Control de capas
+        // 3. Control de capas (sin overlays confusos: el Relieve IGN se integra como opción del comparador)
         L.control.layers(this.baseLayers, overlays).addTo(this.map);
 
         // 4. Control de enlace a la fuente
@@ -165,45 +165,73 @@ export default class MapController {
             if (!this._compareActive) this._sourceLinkControl.update(e.name);
         });
 
-        // 5. Control de comparación de mapas (slider)
-        this._compareActive = false;
-        this._comparePane   = null;
-        this._compareRight  = null;
+        // 5. Botón comparar (⇔) — aparece a la izquierda del icono de capas, oculto por defecto
+        this._compareActive   = false;
+        this._comparePane     = null;
+        this._compareRight    = null;
         this._compareSliderEl = null;
 
         const layerNames = Object.keys(this.baseLayers);
         const self = this;
 
-        const CompareControl = L.Control.extend({
+        // Panel de selección — oculto hasta que se pulse el botón
+        const ComparePanelControl = L.Control.extend({
             options: { position: 'topright' },
-            onAdd(map) {
-                const wrap = L.DomUtil.create('div', 'leaflet-compare-control leaflet-bar');
-                wrap.style.cssText = 'background:#fff;padding:6px 8px;border-radius:4px;font-size:12px;min-width:200px;';
+            onAdd() {
+                const wrap = L.DomUtil.create('div', 'leaflet-compare-panel leaflet-bar');
+                wrap.style.cssText = 'display:none;background:#fff;padding:5px 8px;font-size:11px;white-space:nowrap;';
+                const opts = layerNames.map(n => `<option>${n}</option>`).join('');
+                const optsR = layerNames.map((n, i) => `<option${i === 1 ? ' selected' : ''}>${n}</option>`).join('');
                 wrap.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <select id="cmpLeft"  style="flex:1;font-size:11px;padding:2px;">${layerNames.map(n=>`<option>${n}</option>`).join('')}</select>
-                        <span style="color:#666;">⟷</span>
-                        <select id="cmpRight" style="flex:1;font-size:11px;padding:2px;">${layerNames.map((n,i)=>`<option ${i===1?'selected':''}>${n}</option>`).join('')}</select>
-                        <button id="cmpBtn" style="font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#f4f4f4;">Comparar</button>
-                    </div>`;
+                    <select id="cmpLeft"  style="font-size:11px;max-width:110px;">${opts}</select>
+                    <span style="margin:0 4px;color:#888;">⟷</span>
+                    <select id="cmpRight" style="font-size:11px;max-width:110px;">${optsR}</select>
+                    <button id="cmpStart" style="margin-left:6px;font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#e8f4fd;">▶ Comparar</button>
+                    <button id="cmpStop"  style="margin-left:4px;font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fde8e8;display:none;">✕ Salir</button>`;
                 L.DomEvent.disableClickPropagation(wrap);
                 L.DomEvent.disableScrollPropagation(wrap);
 
-                wrap.querySelector('#cmpBtn').addEventListener('click', () => {
-                    if (self._compareActive) {
-                        self.stopCompare();
-                        wrap.querySelector('#cmpBtn').textContent = 'Comparar';
-                    } else {
-                        const left  = wrap.querySelector('#cmpLeft').value;
-                        const right = wrap.querySelector('#cmpRight').value;
-                        self.startCompare(left, right);
-                        wrap.querySelector('#cmpBtn').textContent = 'Salir';
-                    }
+                wrap.querySelector('#cmpStart').addEventListener('click', () => {
+                    const left  = wrap.querySelector('#cmpLeft').value;
+                    const right = wrap.querySelector('#cmpRight').value;
+                    self.startCompare(left, right);
+                    wrap.querySelector('#cmpStart').style.display = 'none';
+                    wrap.querySelector('#cmpStop').style.display  = '';
+                });
+                wrap.querySelector('#cmpStop').addEventListener('click', () => {
+                    self.stopCompare();
+                    wrap.querySelector('#cmpStart').style.display = '';
+                    wrap.querySelector('#cmpStop').style.display  = 'none';
+                });
+                this._wrap = wrap;
+                return wrap;
+            }
+        });
+        this._comparePanelCtrl = new ComparePanelControl();
+        this._comparePanelCtrl.addTo(this.map);
+
+        // Botón ⇔ que muestra/oculta el panel
+        const CompareToggleControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd() {
+                const wrap = L.DomUtil.create('div', 'leaflet-bar');
+                const a = L.DomUtil.create('a', '', wrap);
+                a.href = '#';
+                a.title = 'Comparar dos capas de mapa';
+                a.innerHTML = '⇔';
+                a.style.cssText = 'font-size:15px;line-height:26px;font-weight:bold;color:#333;';
+                L.DomEvent.on(a, 'click', (e) => {
+                    L.DomEvent.stop(e);
+                    const panel = self._comparePanelCtrl._wrap;
+                    if (!panel) return;
+                    const visible = panel.style.display !== 'none';
+                    panel.style.display = visible ? 'none' : '';
+                    if (visible && self._compareActive) self.stopCompare();
                 });
                 return wrap;
             }
         });
-        new CompareControl().addTo(this.map);
+        new CompareToggleControl().addTo(this.map);
 
         // Capas para marcadores (Clustering)
         this.markerLayer = L.markerClusterGroup({
@@ -663,12 +691,15 @@ export default class MapController {
         const mapEl = this.map.getContainer();
         let sliderX = mapEl.clientWidth / 2;
 
-        // Aplicar clip-path al pane derecho (muestra solo desde sliderX hacia la derecha)
+        // Aplicar clip al pane derecho compensando el offset del map pane de Leaflet.
+        // El pane de Leaflet (.leaflet-map-pane) está trasladado durante el paneo,
+        // por lo que hay que restar esa traslación para obtener coordenadas en espacio pane.
         const applyClip = () => {
-            const w = mapEl.clientWidth;
-            const h = mapEl.clientHeight;
-            // inset(top right bottom left): recorta 'left' px por la izquierda
-            pane.style.clipPath = `inset(0px 0px 0px ${sliderX}px)`;
+            const p    = this.map._getMapPanePos();   // {x, y} offset del mapa en px
+            const size = this.map.getSize();          // {x:width, y:height} en px
+            // clip: rect(top, right, bottom, left) — coordenadas relativas al pane
+            pane.style.clip =
+                `rect(${-p.y}px, ${size.x - p.x}px, ${size.y - p.y}px, ${sliderX - p.x}px)`;
         };
         applyClip();
         this.map.on('move zoom resize', applyClip);
@@ -729,7 +760,7 @@ export default class MapController {
             this._compareRight = null;
         }
         if (this._comparePane) {
-            this._comparePane.style.clipPath = '';
+            this._comparePane.style.clip = '';
             this._comparePane = null;
         }
         if (this._compareClipFn) {
