@@ -125,6 +125,11 @@
 
         <!-- 1. Gallery Panel (Left) -->
         <aside class="gallery-panel" aria-label="Galería de imágenes">
+        <button id="toggleGalleryPanelBtn" class="gallery-collapse-btn" title="Ocultar galería" aria-label="Ocultar galería">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
             <div class="toolbar" role="toolbar" aria-label="Controles de la galería">
                 <div class="gallery-header-row">
                     <div class="gallery-info" aria-live="polite" aria-atomic="true">
@@ -195,6 +200,11 @@
         <!-- 2. Map Panel (Center) -->
         <main class="map-panel" aria-label="Mapa de ubicaciones">
             <div id="map" role="application" aria-label="Mapa interactivo de Leaflet"></div>
+            <button id="reopenGalleryPanelBtn" class="gallery-reopen-btn" title="Mostrar galería" aria-label="Mostrar galería">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
             <button id="reopenDetailsPanelBtn" class="panel-reopen-btn" title="Mostrar panel de metadatos" aria-label="Mostrar panel de metadatos">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     <polyline points="9 18 15 12 9 6"></polyline>

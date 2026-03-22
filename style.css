@@ -538,6 +538,57 @@ body {
     display: none;
 }
 
+/* Galería oculta */
+.gallery-panel.panel-hidden {
+    display: none;
+}
+
+/* Botón colapsar galería — flota sobre el borde derecho del panel galería */
+.gallery-collapse-btn {
+    position: absolute;
+    top: 50%;
+    right: -14px;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 48px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    box-shadow: 2px 0 6px rgba(0,0,0,0.3);
+    z-index: 20;
+}
+.gallery-collapse-btn:hover { color: var(--text-main); background: var(--bg-secondary); }
+
+/* Botón flotante para reabrir galería (borde izquierdo del mapa) */
+.gallery-reopen-btn {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 48px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    color: var(--text-secondary);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 2px 0 6px rgba(0,0,0,0.3);
+    z-index: 20;
+}
+.gallery-reopen-btn:hover { color: var(--text-main); background: var(--bg-secondary); }
+.gallery-hidden-active .gallery-reopen-btn { display: flex; }
+
 /* Indicador de filtros activos (embudo encendido) */
 .toolbar-action-btn.filters-applied {
     color: var(--accent-primary) !important;

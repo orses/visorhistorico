@@ -262,6 +262,18 @@ function setupGlobalListeners() {
     document.getElementById('toggleDetailsPanelBtn')?.addEventListener('click', () => _toggleDetailsPanel());
     document.getElementById('reopenDetailsPanelBtn')?.addEventListener('click', () => _toggleDetailsPanel(false));
 
+    // Toggle panel de galería — botón dentro del panel + botón reabrir en el mapa
+    const _toggleGalleryPanel = (forceHide) => {
+        const panel = document.querySelector('.gallery-panel');
+        const mapEl = document.querySelector('.map-panel');
+        const isHidden = forceHide !== undefined ? forceHide : !panel.classList.contains('panel-hidden');
+        panel.classList.toggle('panel-hidden', isHidden);
+        if (mapEl) mapEl.classList.toggle('gallery-hidden-active', isHidden);
+        setTimeout(() => mapController.map.invalidateSize(), 50);
+    };
+    document.getElementById('toggleGalleryPanelBtn')?.addEventListener('click', () => _toggleGalleryPanel());
+    document.getElementById('reopenGalleryPanelBtn')?.addEventListener('click', () => _toggleGalleryPanel(false));
+
     // Expand Gallery
     document.getElementById('expandGalleryBtn')?.addEventListener('click', (e) => {
         const panel = document.querySelector('.gallery-panel');

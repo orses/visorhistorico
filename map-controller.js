@@ -81,8 +81,12 @@ export default class MapController {
                 return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenTopoMap (CC-BY-SA)', maxNativeZoom: 17, maxZoom: 20, ...extraOptions });
             case 'Relieve ESRI':
-                return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri', maxNativeZoom: 13, maxZoom: 20, ...extraOptions });
+                return L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USGS, NOAA', maxNativeZoom: 16, maxZoom: 20, ...extraOptions });
+            case 'Relieve IGN':
+                return L.tileLayer.wms('https://www.ign.es/wms-inspire/mdt', {
+                    layers: 'HillShading', format: 'image/png', transparent: false,
+                    version: '1.3.0', attribution: '&copy; IGN &mdash; MDT', maxZoom: 20, ...extraOptions });
             case 'MTN IGN (España)':
                 return L.tileLayer.wms('https://www.ign.es/wms-inspire/mapa-raster', {
                     layers: 'mtn_rasterizado', format: 'image/png', transparent: false,
@@ -101,6 +105,7 @@ export default class MapController {
         const satellite= this._makeLayer('Satélite');
         const topo     = this._makeLayer('Topográfico');
         const relief   = this._makeLayer('Relieve ESRI');   // ← puro sombreado de colinas, sin trama urbana
+        const reliefIGN = this._makeLayer('Relieve IGN');
         const mtnIGN   = this._makeLayer('MTN IGN (España)');
         const texeira  = this._makeLayer('Pedro Texeira (1656)');
 
@@ -109,17 +114,10 @@ export default class MapController {
             "Satélite":           satellite,
             "Topográfico":        topo,
             "Relieve ESRI":       relief,
+            "Relieve IGN":        reliefIGN,
             "MTN IGN (España)":   mtnIGN,
             "Pedro Texeira (1656)": texeira
         };
-
-        // Overlay: sombreado de relieve IGN (transparente, combinable con cualquier base)
-        const relieveIGN = L.tileLayer.wms('https://www.ign.es/wms-inspire/mdt', {
-            layers: 'EL.GridCoverage', format: 'image/png', transparent: true,
-            opacity: 0.45, version: '1.3.0', attribution: '&copy; IGN MDT', maxZoom: 20
-        });
-
-        const overlays = { "Relieve IGN": relieveIGN };
 
         // 2. Crear mapa
         this.map = L.map(this.containerId, {
@@ -129,8 +127,53 @@ export default class MapController {
             closePopupOnClick: true
         });
 
-        // 3. Control de capas (sin overlays confusos: el Relieve IGN se integra como opción del comparador)
-        L.control.layers(this.baseLayers, overlays).addTo(this.map);
+        // 3. Control de capas
+        const layersControl = L.control.layers(this.baseLayers, {}).addTo(this.map);
+
+        // Inyectar sección "Comparar" en el panel de capas de Leaflet
+        const layerNames = Object.keys(this.baseLayers);
+        const self = this;
+        const layerCtrlEl = layersControl.getContainer();
+        const layersList  = layerCtrlEl.querySelector('.leaflet-control-layers-list');
+        const opts  = layerNames.map(n => `<option>${n}</option>`).join('');
+        const optsR = layerNames.map((n, i) => `<option${i === 1 ? ' selected' : ''}>${n}</option>`).join('');
+
+        const cmpDiv = document.createElement('div');
+        cmpDiv.className = 'leaflet-compare-section';
+        cmpDiv.innerHTML = `
+            <hr style="margin:6px 0;border-color:#ddd;">
+            <div id="cmpToggle" style="cursor:pointer;font-size:11px;color:#0078a8;padding:2px 0;user-select:none;">⇔ Comparar capas</div>
+            <div id="cmpPanel" style="display:none;margin-top:6px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <select id="cmpLeft"  style="font-size:11px;flex:1;min-width:80px;">${opts}</select>
+                    <span style="color:#888;font-size:10px;">⟷</span>
+                    <select id="cmpRight" style="font-size:11px;flex:1;min-width:80px;">${optsR}</select>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:5px;">
+                    <button id="cmpStart" style="font-size:11px;flex:1;padding:3px 6px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#e8f4fd;">▶ Comparar</button>
+                    <button id="cmpStop"  style="font-size:11px;flex:1;padding:3px 6px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fde8e8;display:none;">✕ Salir</button>
+                </div>
+            </div>`;
+        L.DomEvent.disableClickPropagation(cmpDiv);
+        L.DomEvent.disableScrollPropagation(cmpDiv);
+        layersList.appendChild(cmpDiv);
+
+        cmpDiv.querySelector('#cmpToggle').addEventListener('click', () => {
+            const panel = cmpDiv.querySelector('#cmpPanel');
+            panel.style.display = panel.style.display === 'none' ? '' : 'none';
+        });
+        cmpDiv.querySelector('#cmpStart').addEventListener('click', () => {
+            const left  = cmpDiv.querySelector('#cmpLeft').value;
+            const right = cmpDiv.querySelector('#cmpRight').value;
+            self.startCompare(left, right);
+            cmpDiv.querySelector('#cmpStart').style.display = 'none';
+            cmpDiv.querySelector('#cmpStop').style.display  = '';
+        });
+        cmpDiv.querySelector('#cmpStop').addEventListener('click', () => {
+            self.stopCompare();
+            cmpDiv.querySelector('#cmpStart').style.display = '';
+            cmpDiv.querySelector('#cmpStop').style.display  = 'none';
+        });
 
         // 4. Control de enlace a la fuente
         const sourceLinks = {
@@ -138,6 +181,7 @@ export default class MapController {
             "Satélite":           'https://www.arcgis.com/apps/mapviewer',
             "Topográfico":        'https://opentopomap.org',
             "Relieve ESRI":       'https://www.arcgis.com/apps/mapviewer',
+            "Relieve IGN":        'https://www.ign.es/iberpix/visor',
             "MTN IGN (España)":   'https://www.ign.es/iberpix/visor',
             "Pedro Texeira (1656)":'https://www.ign.es/web/catalogo-cartoteca/-/catalogo/MainForm'
         };
@@ -165,73 +209,11 @@ export default class MapController {
             if (!this._compareActive) this._sourceLinkControl.update(e.name);
         });
 
-        // 5. Botón comparar (⇔) — aparece a la izquierda del icono de capas, oculto por defecto
+        // 5. Estado del modo comparar
         this._compareActive   = false;
         this._comparePane     = null;
         this._compareRight    = null;
         this._compareSliderEl = null;
-
-        const layerNames = Object.keys(this.baseLayers);
-        const self = this;
-
-        // Panel de selección — oculto hasta que se pulse el botón
-        const ComparePanelControl = L.Control.extend({
-            options: { position: 'topright' },
-            onAdd() {
-                const wrap = L.DomUtil.create('div', 'leaflet-compare-panel leaflet-bar');
-                wrap.style.cssText = 'display:none;background:#fff;padding:5px 8px;font-size:11px;white-space:nowrap;';
-                const opts = layerNames.map(n => `<option>${n}</option>`).join('');
-                const optsR = layerNames.map((n, i) => `<option${i === 1 ? ' selected' : ''}>${n}</option>`).join('');
-                wrap.innerHTML = `
-                    <select id="cmpLeft"  style="font-size:11px;max-width:110px;">${opts}</select>
-                    <span style="margin:0 4px;color:#888;">⟷</span>
-                    <select id="cmpRight" style="font-size:11px;max-width:110px;">${optsR}</select>
-                    <button id="cmpStart" style="margin-left:6px;font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#e8f4fd;">▶ Comparar</button>
-                    <button id="cmpStop"  style="margin-left:4px;font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fde8e8;display:none;">✕ Salir</button>`;
-                L.DomEvent.disableClickPropagation(wrap);
-                L.DomEvent.disableScrollPropagation(wrap);
-
-                wrap.querySelector('#cmpStart').addEventListener('click', () => {
-                    const left  = wrap.querySelector('#cmpLeft').value;
-                    const right = wrap.querySelector('#cmpRight').value;
-                    self.startCompare(left, right);
-                    wrap.querySelector('#cmpStart').style.display = 'none';
-                    wrap.querySelector('#cmpStop').style.display  = '';
-                });
-                wrap.querySelector('#cmpStop').addEventListener('click', () => {
-                    self.stopCompare();
-                    wrap.querySelector('#cmpStart').style.display = '';
-                    wrap.querySelector('#cmpStop').style.display  = 'none';
-                });
-                this._wrap = wrap;
-                return wrap;
-            }
-        });
-        this._comparePanelCtrl = new ComparePanelControl();
-        this._comparePanelCtrl.addTo(this.map);
-
-        // Botón ⇔ que muestra/oculta el panel
-        const CompareToggleControl = L.Control.extend({
-            options: { position: 'topright' },
-            onAdd() {
-                const wrap = L.DomUtil.create('div', 'leaflet-bar');
-                const a = L.DomUtil.create('a', '', wrap);
-                a.href = '#';
-                a.title = 'Comparar dos capas de mapa';
-                a.innerHTML = '⇔';
-                a.style.cssText = 'font-size:15px;line-height:26px;font-weight:bold;color:#333;';
-                L.DomEvent.on(a, 'click', (e) => {
-                    L.DomEvent.stop(e);
-                    const panel = self._comparePanelCtrl._wrap;
-                    if (!panel) return;
-                    const visible = panel.style.display !== 'none';
-                    panel.style.display = visible ? 'none' : '';
-                    if (visible && self._compareActive) self.stopCompare();
-                });
-                return wrap;
-            }
-        });
-        new CompareToggleControl().addTo(this.map);
 
         // Capas para marcadores (Clustering)
         this.markerLayer = L.markerClusterGroup({
