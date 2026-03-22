@@ -73,10 +73,10 @@ export default class MapController {
         switch (name) {
             case 'Mapa':
                 return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors', maxZoom: 19, ...extraOptions });
+                    attribution: '© OpenStreetMap contributors', maxNativeZoom: 19, maxZoom: 20, ...extraOptions });
             case 'Satélite':
                 return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles &copy; Esri', maxZoom: 19, ...extraOptions });
+                    attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 20, ...extraOptions });
             case 'Topográfico':
                 return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenTopoMap (CC-BY-SA)', maxNativeZoom: 17, maxZoom: 20, ...extraOptions });
