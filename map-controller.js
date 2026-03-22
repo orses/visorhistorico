@@ -116,7 +116,7 @@ export default class MapController {
         this.geoFilterLayer = L.layerGroup().addTo(this.map);
 
         this.notesLayer = L.featureGroup().addTo(this.map);
-        this._notesMinZoom = 15;
+        this._notesMinZoom = 17;
 
         // Mostrar/ocultar notas según zoom
         const updateNotesVisibility = () => {
