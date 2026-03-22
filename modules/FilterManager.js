@@ -137,6 +137,7 @@ export default class FilterManager {
         this.geographicFilter.reset();
         this.timelineFilter.reset();
         this.renderControllers(); // re-renderiza chips con todos activos
+        this.updateFilterIndicator(); // quitar el punto de inmediato, sin esperar al async
         this.applyFilters('');
     }
 

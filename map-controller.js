@@ -89,10 +89,43 @@ export default class MapController {
             maxZoom: 20
         });
 
+        // Mapa topográfico global con sombreado de relieve e isohipsas (OpenTopoMap)
+        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA) · © <a href="https://openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+            maxZoom: 17
+        });
+
+        // MTN topográfico IGN España (isohipsas + relieve oficial)
+        const mtnIGN = L.tileLayer.wms('https://www.ign.es/wms-inspire/mapa-raster', {
+            layers: 'mtn_rasterizado',
+            format: 'image/png',
+            transparent: false,
+            version: '1.3.0',
+            attribution: '&copy; <a href="https://www.ign.es" target="_blank">Instituto Geográfico Nacional</a>',
+            maxZoom: 20
+        });
+
         this.baseLayers = {
             "Mapa": osm,
             "Satélite": satellite,
+            "Topográfico": topo,
+            "MTN IGN (España)": mtnIGN,
             "Pedro Texeira (1656)": texeira
+        };
+
+        // Overlay: sombreado de relieve IGN (transparente, combinable con cualquier base)
+        const relieveIGN = L.tileLayer.wms('https://www.ign.es/wms-inspire/mdt', {
+            layers: 'EL.GridCoverage',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.45,
+            version: '1.3.0',
+            attribution: '&copy; IGN MDT',
+            maxZoom: 20
+        });
+
+        const overlays = {
+            "Relieve IGN": relieveIGN
         };
 
         // 2. Crear mapa centrado en Madrid con Mapa por defecto
@@ -103,8 +136,8 @@ export default class MapController {
             closePopupOnClick: true
         });
 
-        // 3. Añadir control de selección de capas
-        L.control.layers(this.baseLayers).addTo(this.map);
+        // 3. Añadir control de selección de capas (bases + overlays)
+        L.control.layers(this.baseLayers, overlays).addTo(this.map);
 
         // Capas para marcadores (Clustering)
         this.markerLayer = L.markerClusterGroup({

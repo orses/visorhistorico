@@ -39,6 +39,7 @@ const state = {
     primarySelectedImage: null,
     allScannedFiles: [],
     tiffFileMap: new Map(), // filename → File (for on-demand decode)
+    dirHandle: null,        // FileSystemDirectoryHandle activo (para guardar notas)
 };
 let searchTimeout = null;
 let noteMode = false;
@@ -241,6 +242,7 @@ function setupGlobalListeners() {
 
     // Limpiar todos los filtros
     document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+        if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
         document.getElementById('searchInput').value = '';
         document.getElementById('clearSearchBtn').classList.add('hidden');
         filterManager.resetAll();
@@ -620,11 +622,12 @@ async function loadImagesFromDirectory(existingHandle = null) {
                 logger.error('showDirectoryPicker API no disponible');
                 return;
             }
-            dirHandle = await window.showDirectoryPicker();
+            dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             // Guardar para futuras sesiones
             await set('visor_historico_dir_handle', dirHandle);
         }
 
+        state.dirHandle = dirHandle;
         uiManager.showToast('Cargando directorio...', 'normal');
 
         // RESET COMPLETO — borra metadatos anteriores y ediciones manuales
@@ -638,10 +641,18 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         // Primero: escanear el directorio completo y recoger JSON e imágenes por separado
         const jsonFiles = []; // { name, file } para elegir el más reciente
+        let notesFileText = null; // contenido de visor_notas.json si existe
 
         for await (const entry of dirHandle.values()) {
             if (entry.kind !== 'file') continue;
             state.allScannedFiles.push(entry.name);
+
+            if (entry.name.toLowerCase() === 'visor_notas.json') {
+                // Archivo de notas del mapa — cargar por separado
+                const file = await entry.getFile();
+                notesFileText = await file.text();
+                continue;
+            }
 
             if (entry.name.toLowerCase().endsWith('.json')) {
                 const file = await entry.getFile();
@@ -687,6 +698,22 @@ async function loadImagesFromDirectory(existingHandle = null) {
                     'success'
                 );
             }
+        }
+
+        // Cargar notas del mapa: desde archivo de la carpeta o IDB como fallback
+        if (notesFileText) {
+            try {
+                const notes = JSON.parse(notesFileText);
+                mapController.loadNotes(notes);
+                await set('map_notes', notes); // sincronizar IDB
+                logger.log(`Notas cargadas desde visor_notas.json (${notes.length})`);
+            } catch (e) {
+                logger.warn('Error al parsear visor_notas.json:', e);
+            }
+        } else {
+            // Fallback: usar notas guardadas en IDB
+            const idbNotes = await get('map_notes') || [];
+            mapController.loadNotes(idbNotes);
         }
 
         // Pass only images to stats service for consistency
@@ -823,7 +850,20 @@ function navigateGallery(direction) {
 }
 
 async function saveNotes() {
-    await set('map_notes', mapController.mapNotes);
+    const notes = mapController.mapNotes;
+    // Guardar en IDB (siempre disponible)
+    await set('map_notes', notes);
+    // Guardar en visor_notas.json dentro de la carpeta cargada
+    if (state.dirHandle) {
+        try {
+            const fileHandle = await state.dirHandle.getFileHandle('visor_notas.json', { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(notes, null, 2));
+            await writable.close();
+        } catch (e) {
+            logger.warn('No se pudieron guardar notas en archivo:', e);
+        }
+    }
 }
 
 // Configurar PWA Service Worker
