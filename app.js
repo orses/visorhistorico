@@ -5,7 +5,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import * as UTIF from 'utif';
 import { registerSW } from 'virtual:pwa-register';
-import { get, set } from 'idb-keyval';
+import { get, set, clear as clearIDB } from 'idb-keyval';
 
 import MetadataManager from './metadata-manager.js';
 import MapController from './map-controller.js';
@@ -303,6 +303,18 @@ function setupGlobalListeners() {
         } else {
             metadataManager.exportToJSON();
             uiManager.showToast('Metadatos exportados', 'success');
+        }
+    });
+
+    // Borrar todo el almacenamiento del navegador
+    document.getElementById('clearStorageBtn')?.addEventListener('click', async () => {
+        if (!confirm('¿Borrar todo el almacenamiento del navegador?\n\nSe eliminarán:\n• Directorio guardado\n• Ediciones manuales de metadatos\n• Notas del mapa\n• Caché de miniaturas TIFF\n\nLa página se recargará desde cero.')) return;
+        try {
+            await clearIDB();
+            localStorage.clear();
+            location.reload();
+        } catch (e) {
+            alert('Error al limpiar el almacenamiento: ' + e.message);
         }
     });
 

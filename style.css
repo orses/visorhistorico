@@ -1635,6 +1635,16 @@ select[data-field="conservationStatus"] option[value="Conservado"] {
     background: rgba(0, 255, 163, 0.1) !important;
 }
 
+.btn-clear-storage {
+    opacity: 0.6;
+    color: #e74c3c;
+}
+.btn-clear-storage:hover {
+    opacity: 1;
+    border-color: #e74c3c !important;
+    background: rgba(231, 76, 60, 0.12) !important;
+}
+
 @keyframes pulse-restore {
     0% { box-shadow: 0 0 0 0 rgba(0, 255, 163, 0.4); }
     70% { box-shadow: 0 0 0 10px rgba(0, 255, 163, 0); }
