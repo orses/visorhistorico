@@ -68,83 +68,76 @@ export default class MapController {
         }, 150);
     }
 
+    // Crea una instancia fresca de cualquier capa base (necesario para el modo comparación)
+    _makeLayer(name, extraOptions = {}) {
+        switch (name) {
+            case 'Mapa':
+                return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors', maxZoom: 19, ...extraOptions });
+            case 'Satélite':
+                return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri', maxZoom: 19, ...extraOptions });
+            case 'Topográfico':
+                return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenTopoMap (CC-BY-SA)', maxNativeZoom: 17, maxZoom: 20, ...extraOptions });
+            case 'Relieve ESRI':
+                return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri', maxNativeZoom: 13, maxZoom: 20, ...extraOptions });
+            case 'MTN IGN (España)':
+                return L.tileLayer.wms('https://www.ign.es/wms-inspire/mapa-raster', {
+                    layers: 'mtn_rasterizado', format: 'image/png', transparent: false,
+                    version: '1.3.0', attribution: '&copy; IGN', maxZoom: 20, ...extraOptions });
+            case 'Pedro Texeira (1656)':
+                return L.tileLayer.wms('https://www.ign.es/wms/planos', {
+                    layers: 'texeira', format: 'image/jpeg', transparent: false,
+                    version: '1.3.0', attribution: '&copy; IGN', maxZoom: 20, ...extraOptions });
+            default: return null;
+        }
+    }
+
     init() {
-        // 1. Definir capas base
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        });
-
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-            maxZoom: 19
-        });
-
-        const texeira = L.tileLayer.wms('https://www.ign.es/wms/planos', {
-            layers: 'texeira',
-            format: 'image/jpeg',
-            transparent: false,
-            version: '1.3.0',
-            attribution: '&copy; Instituto Geográfico Nacional',
-            maxZoom: 20
-        });
-
-        // Mapa topográfico global con sombreado de relieve e isohipsas (OpenTopoMap)
-        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA) · © <a href="https://openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-            maxNativeZoom: 17,
-            maxZoom: 20
-        });
-
-        // MTN topográfico IGN España (isohipsas + relieve oficial)
-        const mtnIGN = L.tileLayer.wms('https://www.ign.es/wms-inspire/mapa-raster', {
-            layers: 'mtn_rasterizado',
-            format: 'image/png',
-            transparent: false,
-            version: '1.3.0',
-            attribution: '&copy; <a href="https://www.ign.es" target="_blank">Instituto Geográfico Nacional</a>',
-            maxZoom: 20
-        });
+        // 1. Definir capas base (una instancia por capa para el selector normal)
+        const osm      = this._makeLayer('Mapa');
+        const satellite= this._makeLayer('Satélite');
+        const topo     = this._makeLayer('Topográfico');
+        const relief   = this._makeLayer('Relieve ESRI');   // ← puro sombreado de colinas, sin trama urbana
+        const mtnIGN   = this._makeLayer('MTN IGN (España)');
+        const texeira  = this._makeLayer('Pedro Texeira (1656)');
 
         this.baseLayers = {
-            "Mapa": osm,
-            "Satélite": satellite,
-            "Topográfico": topo,
-            "MTN IGN (España)": mtnIGN,
+            "Mapa":               osm,
+            "Satélite":           satellite,
+            "Topográfico":        topo,
+            "Relieve ESRI":       relief,
+            "MTN IGN (España)":   mtnIGN,
             "Pedro Texeira (1656)": texeira
         };
 
         // Overlay: sombreado de relieve IGN (transparente, combinable con cualquier base)
         const relieveIGN = L.tileLayer.wms('https://www.ign.es/wms-inspire/mdt', {
-            layers: 'EL.GridCoverage',
-            format: 'image/png',
-            transparent: true,
-            opacity: 0.45,
-            version: '1.3.0',
-            attribution: '&copy; IGN MDT',
-            maxZoom: 20
+            layers: 'EL.GridCoverage', format: 'image/png', transparent: true,
+            opacity: 0.45, version: '1.3.0', attribution: '&copy; IGN MDT', maxZoom: 20
         });
 
-        const overlays = {
-            "Relieve IGN": relieveIGN
-        };
+        const overlays = { "Relieve IGN": relieveIGN };
 
-        // 2. Crear mapa centrado en Madrid con Mapa por defecto
+        // 2. Crear mapa
         this.map = L.map(this.containerId, {
             center: [40.4168, -3.7038],
             zoom: 13,
-            layers: [osm], // Por defecto mapa convencional
+            layers: [osm],
             closePopupOnClick: true
         });
 
-        // 3. Añadir control de selección de capas (bases + overlays)
+        // 3. Control de capas
         L.control.layers(this.baseLayers, overlays).addTo(this.map);
 
-        // 4. Control de enlace a la fuente del mapa activo
+        // 4. Control de enlace a la fuente
         const sourceLinks = {
             "Mapa":               'https://www.openstreetmap.org',
             "Satélite":           'https://www.arcgis.com/apps/mapviewer',
             "Topográfico":        'https://opentopomap.org',
+            "Relieve ESRI":       'https://www.arcgis.com/apps/mapviewer',
             "MTN IGN (España)":   'https://www.ign.es/iberpix/visor',
             "Pedro Texeira (1656)":'https://www.ign.es/web/catalogo-cartoteca/-/catalogo/MainForm'
         };
@@ -166,11 +159,51 @@ export default class MapController {
         });
         this._sourceLinkControl = new SourceLinkControl();
         this._sourceLinkControl.addTo(this.map);
-        this._sourceLinkControl.update('Mapa'); // capa inicial por defecto
+        this._sourceLinkControl.update('Mapa');
 
         this.map.on('baselayerchange', (e) => {
-            this._sourceLinkControl.update(e.name);
+            if (!this._compareActive) this._sourceLinkControl.update(e.name);
         });
+
+        // 5. Control de comparación de mapas (slider)
+        this._compareActive = false;
+        this._comparePane   = null;
+        this._compareRight  = null;
+        this._compareSliderEl = null;
+
+        const layerNames = Object.keys(this.baseLayers);
+        const self = this;
+
+        const CompareControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd(map) {
+                const wrap = L.DomUtil.create('div', 'leaflet-compare-control leaflet-bar');
+                wrap.style.cssText = 'background:#fff;padding:6px 8px;border-radius:4px;font-size:12px;min-width:200px;';
+                wrap.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <select id="cmpLeft"  style="flex:1;font-size:11px;padding:2px;">${layerNames.map(n=>`<option>${n}</option>`).join('')}</select>
+                        <span style="color:#666;">⟷</span>
+                        <select id="cmpRight" style="flex:1;font-size:11px;padding:2px;">${layerNames.map((n,i)=>`<option ${i===1?'selected':''}>${n}</option>`).join('')}</select>
+                        <button id="cmpBtn" style="font-size:11px;padding:2px 7px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#f4f4f4;">Comparar</button>
+                    </div>`;
+                L.DomEvent.disableClickPropagation(wrap);
+                L.DomEvent.disableScrollPropagation(wrap);
+
+                wrap.querySelector('#cmpBtn').addEventListener('click', () => {
+                    if (self._compareActive) {
+                        self.stopCompare();
+                        wrap.querySelector('#cmpBtn').textContent = 'Comparar';
+                    } else {
+                        const left  = wrap.querySelector('#cmpLeft').value;
+                        const right = wrap.querySelector('#cmpRight').value;
+                        self.startCompare(left, right);
+                        wrap.querySelector('#cmpBtn').textContent = 'Salir';
+                    }
+                });
+                return wrap;
+            }
+        });
+        new CompareControl().addTo(this.map);
 
         // Capas para marcadores (Clustering)
         this.markerLayer = L.markerClusterGroup({
@@ -604,6 +637,113 @@ export default class MapController {
 
         // Aplicar visibilidad inicial según zoom actual
         if (this._updateNotesVisibility) this._updateNotesVisibility();
+    }
+
+    // ── COMPARACIÓN DE MAPAS CON SLIDER ─────────────────────────────────────
+
+    startCompare(leftName, rightName) {
+        this.stopCompare();
+
+        // Cambiar capa base activa a la izquierda
+        Object.values(this.baseLayers).forEach(l => { if (this.map.hasLayer(l)) this.map.removeLayer(l); });
+        const leftLayer = this._makeLayer(leftName);
+        leftLayer.addTo(this.map);
+
+        // Crear pane exclusivo para la capa derecha (z-index por encima del tile pane normal)
+        if (!this.map.getPane('comparePane')) this.map.createPane('comparePane');
+        const pane = this.map.getPane('comparePane');
+        pane.style.zIndex = 201;
+
+        this._compareRight = this._makeLayer(rightName, { pane: 'comparePane' });
+        this._compareRight.addTo(this.map);
+        this._comparePane = pane;
+        this._compareActive = true;
+
+        // Posición inicial del slider: mitad del contenedor
+        const mapEl = this.map.getContainer();
+        let sliderX = mapEl.clientWidth / 2;
+
+        // Aplicar clip-path al pane derecho (muestra solo desde sliderX hacia la derecha)
+        const applyClip = () => {
+            const w = mapEl.clientWidth;
+            const h = mapEl.clientHeight;
+            // inset(top right bottom left): recorta 'left' px por la izquierda
+            pane.style.clipPath = `inset(0px 0px 0px ${sliderX}px)`;
+        };
+        applyClip();
+        this.map.on('move zoom resize', applyClip);
+        this._compareClipFn = applyClip;
+
+        // Crear el div del slider
+        const slider = document.createElement('div');
+        slider.className = 'map-compare-slider';
+        slider.style.cssText = `
+            position:absolute; top:0; left:${sliderX}px; width:3px; height:100%;
+            background:rgba(255,255,255,0.9); cursor:ew-resize; z-index:1000;
+            box-shadow:0 0 6px rgba(0,0,0,0.4); touch-action:none;`;
+
+        // Handle central visible
+        const handle = document.createElement('div');
+        handle.style.cssText = `
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            width:28px; height:28px; background:#fff; border-radius:50%;
+            box-shadow:0 1px 5px rgba(0,0,0,0.5);
+            display:flex; align-items:center; justify-content:center;
+            font-size:13px; color:#555; user-select:none;`;
+        handle.textContent = '⇔';
+        slider.appendChild(handle);
+        mapEl.appendChild(slider);
+        this._compareSliderEl = slider;
+
+        // Arrastrar
+        const onMove = (e) => {
+            const rect = mapEl.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            sliderX = Math.max(0, Math.min(mapEl.clientWidth, clientX - rect.left));
+            slider.style.left = sliderX + 'px';
+            applyClip();
+        };
+        const onUp = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup',   onUp);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend',  onUp);
+        };
+        slider.addEventListener('mousedown',  () => {
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup',   onUp);
+        });
+        slider.addEventListener('touchstart', () => {
+            window.addEventListener('touchmove', onMove, { passive: true });
+            window.addEventListener('touchend',  onUp);
+        });
+    }
+
+    stopCompare() {
+        if (!this._compareActive) return;
+        this._compareActive = false;
+
+        // Retirar capa derecha y limpiar pane
+        if (this._compareRight) {
+            this.map.removeLayer(this._compareRight);
+            this._compareRight = null;
+        }
+        if (this._comparePane) {
+            this._comparePane.style.clipPath = '';
+            this._comparePane = null;
+        }
+        if (this._compareClipFn) {
+            this.map.off('move zoom resize', this._compareClipFn);
+            this._compareClipFn = null;
+        }
+        if (this._compareSliderEl) {
+            this._compareSliderEl.remove();
+            this._compareSliderEl = null;
+        }
+
+        // Restaurar capa base activa (la primera disponible)
+        const firstBase = Object.values(this.baseLayers)[0];
+        if (!this.map.hasLayer(firstBase)) firstBase.addTo(this.map);
     }
 
 }

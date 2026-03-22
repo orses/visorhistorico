@@ -1,6 +1,5 @@
 /**
  * ConservationFilter
- * Handles rendering and logic for conservation status filtering.
  */
 import BaseFilter from './BaseFilter.js';
 
@@ -9,17 +8,27 @@ export default class ConservationFilter extends BaseFilter {
         super(metadataManager, onFilterChange, 'conservationFilters');
         this.activeStatuses = new Set();
         this.CONSERVATION_STATUSES = ['Desaparecido', 'En ruinas', 'Modificado', 'Conservado', 'Sin clasificar'];
+        this._statusMap = {};
+    }
+
+    /** Reconstruye el mapa de conteo en O(n). */
+    _buildCountMap() {
+        this._statusMap = {};
+        for (const filename of this.currentImages) {
+            const meta = this.metadataManager.getMetadata(filename);
+            const s = meta.conservationStatus || 'Sin clasificar';
+            this._statusMap[s] = (this._statusMap[s] || 0) + 1;
+        }
     }
 
     countByStatus(status) {
-        return this.currentImages.filter(filename => {
-            const meta = this.metadataManager.getMetadata(filename);
-            return (meta.conservationStatus || 'Sin clasificar') === status;
-        }).length;
+        return this._statusMap[status] || 0;
     }
 
     render() {
         if (!this.container) return;
+
+        this._buildCountMap();
 
         const chips = this.CONSERVATION_STATUSES.map(s => ({ value: s, label: s }));
 
@@ -39,7 +48,6 @@ export default class ConservationFilter extends BaseFilter {
 
     matches(filename) {
         const meta = this.metadataManager.getMetadata(filename);
-        const status = meta.conservationStatus || 'Sin clasificar';
-        return this.activeStatuses.has(status);
+        return this.activeStatuses.has(meta.conservationStatus || 'Sin clasificar');
     }
 }

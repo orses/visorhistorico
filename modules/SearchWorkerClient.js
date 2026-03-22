@@ -1,5 +1,9 @@
 /**
  * SearchWorkerClient — async interface to search-worker.js
+ *
+ * Mejora: al iniciar una nueva búsqueda, las promesas pendientes se resuelven
+ * inmediatamente con [] para que el pipeline no quede bloqueado esperando
+ * resultados que ya no interesan.
  */
 export default class SearchWorkerClient {
     constructor() {
@@ -12,6 +16,7 @@ export default class SearchWorkerClient {
                 this._pending.delete(data.id);
                 resolve(data.results);
             }
+            // Si el id ya no está en el mapa, era una búsqueda cancelada → ignorar
         };
     }
 
@@ -24,6 +29,12 @@ export default class SearchWorkerClient {
     }
 
     search(query) {
+        // Cancelar todas las búsquedas pendientes: ya no son relevantes
+        for (const resolve of this._pending.values()) {
+            resolve([]);
+        }
+        this._pending.clear();
+
         return new Promise(resolve => {
             const id = ++this._idCounter;
             this._pending.set(id, resolve);

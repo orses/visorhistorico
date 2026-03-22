@@ -144,18 +144,18 @@ export default class SearchEngine {
                 continue;
             }
 
-            // Construir texto buscable
-            const searchableText = this.normalize([
-                filename, // Incluir nombre de archivo
+            // Usar texto pre-computado si está disponible (worker), o construirlo ahora
+            const searchableText = meta._searchableText ?? this.normalize([
+                filename,
                 meta.mainSubject,
                 meta.location,
                 meta.city,
                 meta.author,
-                meta.reign, // Include Character/Reign
-                meta.dateRange?.start?.toString(), // Include Start Year
-                meta.dateRange?.end?.toString(), // Include End Year
+                meta.reign,
+                meta.dateRange?.start?.toString(),
+                meta.dateRange?.end?.toString(),
                 meta.notes,
-                ...(meta.tags || []),
+                ...(meta.tags     || []),
                 ...(meta.centuries || [])
             ].filter(Boolean).join(' '));
 

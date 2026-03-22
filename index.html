@@ -481,8 +481,9 @@
                         <h3 style="color:#00f2fe;margin-bottom:0.6rem;font-size:1rem;">📁 Cargar una colección</h3>
                         <p>Pulsa <strong>Cargar</strong> en la barra superior y selecciona la carpeta que contiene tus imágenes. El visor escanea todos los archivos <code>jpg, png, webp, tif, tiff</code> de forma recursiva e infiere metadatos automáticamente a partir del nombre del archivo.</p>
                         <p style="margin-top:0.5rem;"><strong>Convenio de nombre recomendado:</strong><br>
-                        <code>Ciudad - Asunto principal - Año - Siglo - Reinado [Autor] - descripción.ext</code><br>
-                        Ejemplo: <code>Madrid - Puerta del Sol - 1856 - XIX - Isabel II [Laurent].jpg</code></p>
+                        <code>Ciudad - Asunto principal - Año - Siglo - Reinado [Autor] (Licencia) - descripción.ext</code><br>
+                        Ejemplo: <code>Madrid - Puerta del Sol - 1856 - XIX - Isabel II [Laurent] (CC BY 4.0).jpg</code><br>
+                        <span style="color:#9ca3af;font-size:0.82rem;">El texto entre corchetes <code>[]</code> se interpreta como autor; el texto entre paréntesis <code>()</code> como licencia o fuente (salvo que sea una fecha del tipo <code>1800-1900</code>).</span></p>
                         <p style="margin-top:0.5rem;">Si existe un archivo <code>.json</code> de metadatos en la misma carpeta, se carga automáticamente como base maestra.</p>
                     </section>
 

@@ -1,6 +1,5 @@
 /**
  * CenturyFilter
- * Handles rendering and logic for century-based filtering.
  */
 import BaseFilter from './BaseFilter.js';
 
@@ -8,11 +7,9 @@ export default class CenturyFilter extends BaseFilter {
     constructor(metadataManager, onFilterChange) {
         super(metadataManager, onFilterChange, 'centuryFilters');
         this.activeCenturies = new Set();
+        this._countMap = {}; // pre-computed: century → count
     }
 
-    /**
-     * Convierte un número romano a entero (para ordenación).
-     */
     static romanToInt(s) {
         const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
         let res = 0;
@@ -23,17 +20,30 @@ export default class CenturyFilter extends BaseFilter {
         return res;
     }
 
-    countByCentury(century) {
-        return this.currentImages.filter(filename => {
+    /** Reconstruye el mapa de conteo en O(n). */
+    _buildCountMap() {
+        this._countMap = {};
+        for (const filename of this.currentImages) {
             const meta = this.metadataManager.getMetadata(filename);
             const centuries = meta.centuries || [];
-            if (century === 'UNKNOWN') return centuries.length === 0;
-            return centuries.includes(century);
-        }).length;
+            if (centuries.length === 0) {
+                this._countMap['UNKNOWN'] = (this._countMap['UNKNOWN'] || 0) + 1;
+            } else {
+                for (const c of centuries) {
+                    this._countMap[c] = (this._countMap[c] || 0) + 1;
+                }
+            }
+        }
+    }
+
+    countByCentury(century) {
+        return this._countMap[century] || 0;
     }
 
     render() {
         if (!this.container) return;
+
+        this._buildCountMap();
 
         let centuries = this.metadataManager.getCenturies();
         centuries.sort((a, b) => CenturyFilter.romanToInt(a) - CenturyFilter.romanToInt(b));
@@ -58,11 +68,9 @@ export default class CenturyFilter extends BaseFilter {
     matches(filename) {
         const meta = this.metadataManager.getMetadata(filename);
         const metaCenturies = meta.centuries || [];
-
         if (metaCenturies.length > 0) {
             return metaCenturies.some(c => this.activeCenturies.has(c));
-        } else {
-            return this.activeCenturies.has('UNKNOWN');
         }
+        return this.activeCenturies.has('UNKNOWN');
     }
 }
