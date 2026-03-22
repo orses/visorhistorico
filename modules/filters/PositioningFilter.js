@@ -43,6 +43,10 @@ export default class PositioningFilter extends BaseFilter {
         updateState();
     }
 
+    reset() {
+        this.activeStates = new Set(['without_coords', 'with_coords']);
+    }
+
     matches(filename) {
         const meta = this.metadataManager.getMetadata(filename);
         if (!meta) return false;

@@ -133,6 +133,8 @@ export default class FilterManager {
      */
     resetAll() {
         this.lastQuery = '';
+        this.positioningFilter.reset();
+        this.geographicFilter.reset();
         this.timelineFilter.reset();
         this.renderControllers(); // re-renderiza chips con todos activos
         this.applyFilters('');

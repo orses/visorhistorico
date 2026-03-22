@@ -262,14 +262,18 @@ function setupGlobalListeners() {
         filterManager.resetAll();
     });
 
-    // Toggle panel de metadatos (derecho)
-    document.getElementById('toggleDetailsPanelBtn')?.addEventListener('click', (e) => {
+    // Toggle panel de metadatos — botón dentro del panel + botón reabrir en el mapa
+    const _toggleDetailsPanel = (forceHide) => {
         const panel = document.getElementById('metadataPanel');
-        const btn = e.target.closest('button');
-        const isHidden = panel.classList.toggle('panel-hidden');
-        btn.classList.toggle('active', !isHidden);
-        btn.setAttribute('aria-pressed', String(!isHidden));
-    });
+        const mapEl = document.querySelector('.map-panel');
+        const isHidden = forceHide !== undefined ? forceHide : !panel.classList.contains('panel-hidden');
+        panel.classList.toggle('panel-hidden', isHidden);
+        if (mapEl) mapEl.classList.toggle('panel-hidden-active', isHidden);
+        // Leaflet necesita recalcular su tamaño tras el cambio de layout
+        setTimeout(() => mapController.map.invalidateSize(), 50);
+    };
+    document.getElementById('toggleDetailsPanelBtn')?.addEventListener('click', () => _toggleDetailsPanel());
+    document.getElementById('reopenDetailsPanelBtn')?.addEventListener('click', () => _toggleDetailsPanel(false));
 
     // Expand Gallery
     document.getElementById('expandGalleryBtn')?.addEventListener('click', (e) => {
@@ -409,6 +413,22 @@ function setupGlobalListeners() {
         filterManager.applyFilters(null); // Re-aplica sin borrar la búsqueda activa
         uiManager.showToast('Ubicación actualizada (Arrastrar)', 'success');
     };
+
+    // Dar de baja una imagen: excluirla de la colección activa en esta sesión
+    const disableImage = (filename) => {
+        metadataManager.updateMetadata(filename, { _disabled: true });
+        state.currentImages = state.currentImages.filter(f => f !== filename);
+        document.getElementById('totalCount').innerHTML = `<b>${state.currentImages.length}</b> catalogados`;
+        filterManager.setImages(state.currentImages);
+        filterManager.applyFilters(null);
+        if (state.selectedImagesList.includes(filename)) {
+            galleryRenderer.selectedImages.delete(filename);
+            galleryRenderer.applySelectionStyles();
+        }
+        uiManager.showToast(`Imagen dada de baja: ${filename}`, 'info');
+    };
+    uiManager._panel.onImageDisabled = disableImage;
+    modalManager.onImageDisabled = disableImage;
 
     // Vista previa de coordenadas en tiempo real (mientras se edita el campo)
     uiManager._panel.onCoordinatePreview = (lat, lng) => {
@@ -644,7 +664,7 @@ async function loadImagesFromDirectory(existingHandle = null) {
 
         uiManager.showToast('Cargando directorio...', 'normal');
 
-        // Restaurar estado visual del botón si estaba en modo recuperar
+        // Resetar botón
         const loadBtn = document.getElementById('loadDirBtn');
         if (loadBtn) {
             loadBtn.innerHTML = `<span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cargar</span>`;
@@ -652,61 +672,65 @@ async function loadImagesFromDirectory(existingHandle = null) {
             state.pendingDirectoryHandle = null;
         }
 
-        metadataManager.suspendSave(); // Avoid 1000+ writes to localStorage
-
-        // MEMORY CLEANUP: revoke old object URLs before loading new ones
-        const allMetaKeys = Object.keys(metadataManager.getAllMetadata());
-        allMetaKeys.forEach(key => {
-            const m = metadataManager.getMetadata(key);
-            if (m._previewUrl && m._previewUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(m._previewUrl);
-                metadataManager.setVolatileData(key, { _previewUrl: null });
-            }
-        });
+        // RESET COMPLETO — borra metadatos anteriores y ediciones manuales
+        metadataManager.suspendSave();
+        await metadataManager.resetForNewDirectory();
 
         state.currentImages = [];
         state.allScannedFiles = [];
         state.tiffFileMap.clear();
         const pendingTiffs = [];
 
+        // Primero: escanear el directorio completo y recoger JSON e imágenes por separado
+        const jsonFiles = []; // { name, file } para elegir el más reciente
+
         for await (const entry of dirHandle.values()) {
-            if (entry.kind === 'file') {
-                state.allScannedFiles.push(entry.name);
+            if (entry.kind !== 'file') continue;
+            state.allScannedFiles.push(entry.name);
 
-                // Check for JSON Metadata
-                if (entry.name.toLowerCase().endsWith('.json') &&
-                    (entry.name.includes('coleccion-historia-metadata') || entry.name === 'metadata.json')) {
-                    logger.log('JSON de metadatos detectado:', entry.name);
-                    const file = await entry.getFile();
-                    const text = await file.text();
-                    metadataManager.importFromJSON(text); // Import content automatically
-                    uiManager.showToast('Metadatos importados automáticamente', 'success');
+            if (entry.name.toLowerCase().endsWith('.json')) {
+                const file = await entry.getFile();
+                jsonFiles.push({ name: entry.name, file });
+                continue;
+            }
+
+            if (entry.name.match(/\.(jpg|jpeg|png|webp|tif|tiff)$/i)) {
+                state.currentImages.push(entry.name);
+                const file = await entry.getFile();
+                const isTiff = /\.(tif|tiff)$/i.test(entry.name);
+
+                if (isTiff) {
+                    pendingTiffs.push({ name: entry.name, file });
+                    state.tiffFileMap.set(entry.name, file);
+                    metadataManager.setVolatileData(entry.name, {
+                        _isProcessing: false,
+                        _needsDecode: true,
+                        _fileSize: file.size
+                    });
+                } else {
+                    const previewUrl = URL.createObjectURL(file);
+                    metadataManager.setVolatileData(entry.name, {
+                        _previewUrl: previewUrl,
+                        _fileSize: file.size
+                    });
                 }
+            }
+        }
 
-                // Only images for gallery
-                if (entry.name.match(/\.(jpg|jpeg|png|webp|tif|tiff)$/i)) {
-                    state.currentImages.push(entry.name);
-
-                    const file = await entry.getFile();
-                    const isTiff = /\.(tif|tiff)$/i.test(entry.name);
-
-                    if (isTiff) {
-                        // On-demand TIFF decoding — store File reference for later
-                        pendingTiffs.push({ name: entry.name, file });
-                        state.tiffFileMap.set(entry.name, file);
-                        metadataManager.setVolatileData(entry.name, {
-                            _isProcessing: false,
-                            _needsDecode: true,
-                            _fileSize: file.size
-                        });
-                    } else {
-                        const previewUrl = URL.createObjectURL(file);
-                        metadataManager.setVolatileData(entry.name, {
-                            _previewUrl: previewUrl,
-                            _fileSize: file.size
-                        });
-                    }
-                }
+        // Cargar el JSON más reciente si hay alguno
+        if (jsonFiles.length > 0) {
+            // Ordenar por fecha de modificación descendente → el más reciente primero
+            jsonFiles.sort((a, b) => b.file.lastModified - a.file.lastModified);
+            const newest = jsonFiles[0];
+            logger.log(`JSON más reciente detectado: ${newest.name} (${jsonFiles.length} encontrados)`);
+            const text = await newest.file.text();
+            if (metadataManager.importFromJSON(text)) {
+                uiManager.showToast(
+                    jsonFiles.length > 1
+                        ? `Metadatos cargados: ${newest.name} (más reciente de ${jsonFiles.length})`
+                        : `Metadatos cargados: ${newest.name}`,
+                    'success'
+                );
             }
         }
 

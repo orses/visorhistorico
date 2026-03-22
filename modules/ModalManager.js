@@ -10,6 +10,7 @@ export default class ModalManager {
         this.statisticsService = statisticsService;
         this.exportService = exportService;
         this.onSaveMetadata = onSaveMetadata;
+        this.onImageDisabled = null;
         this.getFilteredImages = null; // Optional: getter for filtered images list
         this.getAllImages = null;       // Optional: getter for all current images list
 
@@ -366,8 +367,18 @@ export default class ModalManager {
         // Add Technical Info in Modal (read-only)
         html += `<div id="modalTechnicalInfo" class="edit-modal-tech-info"></div>`;
 
+        // Disable action
+        html += `<div class="edit-modal-disable-row"><button id="btnDisableInModal" class="btn btn-danger btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>Dar de baja</button></div>`;
+
         this.elements.editModalContent.innerHTML = html;
         this.elements.editModal.classList.add('active');
+
+        this.elements.editModalContent.querySelector('#btnDisableInModal')?.addEventListener('click', () => {
+            if (confirm(`¿Dar de baja "${filename}"?\nLa imagen quedará excluida de la colección en esta sesión. Al volver a cargar la carpeta será reconocida de nuevo.`)) {
+                if (this.onImageDisabled) this.onImageDisabled(filename);
+                this.closeEditModal();
+            }
+        });
 
 
         // Trigger technical info update if possible (requires image element reference, which we might not have easily here without loading it)

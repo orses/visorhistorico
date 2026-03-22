@@ -11,6 +11,7 @@ export default class MetadataPanelRenderer {
         this.onMetadataUpdate = null;
         this.onOpenOriginal = null;
         this.onCoordinatePreview = null;
+        this.onImageDisabled = null;
         this._blurTimeout = null;
         this._prevValues = new Map();
         this._saveStatusTimeout = null;
@@ -165,6 +166,10 @@ export default class MetadataPanelRenderer {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     Ver Original
                 </a>
+                <button id="btnDisableImage" class="btn btn-danger" aria-label="Dar de baja esta imagen de la colección">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+                    Dar de baja
+                </button>
             </div>
         `;
 
@@ -189,6 +194,15 @@ export default class MetadataPanelRenderer {
             btnOpen.onclick = (e) => {
                 e.preventDefault();
                 if (this.onOpenOriginal) this.onOpenOriginal(filename);
+            };
+        }
+
+        const btnDisable = this.metadataContentEl.querySelector('#btnDisableImage');
+        if (btnDisable) {
+            btnDisable.onclick = () => {
+                if (confirm(`¿Dar de baja "${filename}"?\nLa imagen quedará excluida de la colección en esta sesión. Al volver a cargar la carpeta será reconocida de nuevo.`)) {
+                    if (this.onImageDisabled) this.onImageDisabled(filename);
+                }
             };
         }
 

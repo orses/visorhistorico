@@ -84,6 +84,12 @@ export default class GeographicFilter extends BaseFilter {
         }
     }
 
+    reset() {
+        this.activeMode = 'none';
+        this.filterCoords = null;
+        this.activePolygonName = null;
+    }
+
     matches(filename) {
         if (this.activeMode === 'none') return true;
 

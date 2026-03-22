@@ -471,6 +471,29 @@ export default class MetadataManager {
         return fused;
     }
 
+    /**
+     * Limpia todo el estado para comenzar de cero con un nuevo directorio.
+     * Conserva las ediciones manuales en memoria pero las borra del IDB también.
+     */
+    async resetForNewDirectory() {
+        // Revocar blob URLs existentes
+        for (const key of Object.keys(this.metadata)) {
+            const url = this.metadata[key]?._previewUrl;
+            if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+        }
+        this.metadata = {};
+        this.userDatabase = {};
+        this.manualEdits = {};
+        this._normalizeCache.clear();
+        this._parseCache.clear();
+        this.buildNormalizedIndex();
+        // Borrar ediciones manuales persistidas en IDB
+        try {
+            const { del } = await import('idb-keyval');
+            await del('coleccion_historia_edits_manuales');
+        } catch (_) {}
+    }
+
     // Actualizar metadatos: Alimenta la capa de EDICIONES MANUALES
     updateMetadata(filename, updates) {
         if (!this.manualEdits[filename]) {
