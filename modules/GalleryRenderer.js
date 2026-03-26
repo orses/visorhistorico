@@ -2,6 +2,8 @@
  * GalleryRenderer
  * Handles gallery grid rendering, item creation, and multi-selection logic.
  */
+import { sanitize } from './constants.js';
+
 export default class GalleryRenderer {
     constructor(metadataManager, galleryGridEl, filteredCountEl, onSelectImage) {
         this.metadataManager = metadataManager;
@@ -144,7 +146,7 @@ export default class GalleryRenderer {
             }
         };
 
-        const status = meta.conservationStatus || 'Sin clasificar';
+        const status = sanitize(meta.conservationStatus || 'Sin clasificar');
         const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-');
         const statusDot = `<span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>`;
 
@@ -152,7 +154,7 @@ export default class GalleryRenderer {
         const rotStyle = ` style="transform:${this._cardRotateTransform(meta.rotation)}"`;
         const imageHTML = meta._isProcessing ?
             `<div class="skeleton-box" role="status" aria-label="Procesando imagen..."></div>` :
-            `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${meta.mainSubject || filename}"${rotStyle}>`;
+            `<img src="${thumbPath}" class="card-img" loading="lazy" alt="${sanitize(meta.mainSubject || filename)}"${rotStyle}>`;
 
         const pct = this.computeCompleteness(meta);
 
@@ -161,14 +163,14 @@ export default class GalleryRenderer {
                 ${imageHTML}
             </div>
             <div class="card-info">
-                <div class="card-title" title="${meta.mainSubject}">${meta.mainSubject}</div>
+                <div class="card-title" title="${sanitize(meta.mainSubject)}">${sanitize(meta.mainSubject)}</div>
                 <div class="card-meta">
                     <div class="card-meta-row">
-                        <span class="card-date">${statusDot}${meta.dateRange?.start || 'S.D.'}</span>
-                        <span class="card-century">${(meta.centuries || []).join(', ')}</span>
+                        <span class="card-date">${statusDot}${sanitize(meta.dateRange?.start || 'S.D.')}</span>
+                        <span class="card-century">${sanitize((meta.centuries || []).join(', '))}</span>
                     </div>
                     <div class="card-meta-row">
-                        <span class="card-author" title="${meta.author || 'Anónimo'}">${meta.author || 'Anónimo'}</span>
+                        <span class="card-author" title="${sanitize(meta.author || 'Anónimo')}">${sanitize(meta.author || 'Anónimo')}</span>
                     </div>
                 </div>
                 <div class="meta-progress" title="Completitud de metadatos: ${pct}%"><div class="meta-progress-bar" style="width:${pct}%;--pct:${pct}"></div></div>
@@ -268,7 +270,7 @@ export default class GalleryRenderer {
         if (!card) return;
 
         const meta = this.metadataManager.getMetadata(filename);
-        const status = meta.conservationStatus || 'Sin clasificar';
+        const status = sanitize(meta.conservationStatus || 'Sin clasificar');
         const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-');
 
         const titleEl = card.querySelector('.card-title');
@@ -281,11 +283,11 @@ export default class GalleryRenderer {
         if (metaEl) {
             metaEl.innerHTML = `
                 <div class="card-meta-row">
-                    <span class="card-date"><span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>${meta.dateRange?.start || 'S.D.'}</span>
-                    <span class="card-century">${(meta.centuries || []).join(', ')}</span>
+                    <span class="card-date"><span class="status-dot ${statusClass}" title="${status}" aria-label="Estado: ${status}"></span>${sanitize(meta.dateRange?.start || 'S.D.')}</span>
+                    <span class="card-century">${sanitize((meta.centuries || []).join(', '))}</span>
                 </div>
                 <div class="card-meta-row">
-                    <span class="card-author" title="${meta.author || 'Anónimo'}">${meta.author || 'Anónimo'}</span>
+                    <span class="card-author" title="${sanitize(meta.author || 'Anónimo')}">${sanitize(meta.author || 'Anónimo')}</span>
                 </div>
             `;
         }
