@@ -2,7 +2,7 @@
  * MetadataPanelRenderer
  * Handles the details panel: single-image metadata form rendering and listeners.
  */
-import { DOCUMENT_TYPES, CONSERVATION_STATUSES } from './constants.js';
+import { DOCUMENT_TYPES, CONSERVATION_STATUSES, sanitize } from './constants.js';
 
 export default class MetadataPanelRenderer {
     constructor(metadataManager, metadataContentEl) {
@@ -21,7 +21,7 @@ export default class MetadataPanelRenderer {
         const meta = this.metadataManager.getMetadata(filename);
         if (!meta) return;
 
-        const val = (v, fallback = '-') => (v !== null && v !== undefined && v !== '') ? v : fallback;
+        const val = (v, fallback = '-') => sanitize((v !== null && v !== undefined && v !== '') ? v : fallback);
 
         const dateStart = meta.dateRange?.start || '';
         const dateEnd = meta.dateRange?.end || '';
@@ -38,7 +38,7 @@ export default class MetadataPanelRenderer {
         const html = `
             <div id="saveStatus" class="save-status"></div>
             <div class="details-image-container" title="Clic para ampliar">
-                <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${meta.mainSubject || filename}"${meta.rotation ? ` style="transform:rotate(${meta.rotation}deg)"` : ''}>
+                <img id="detailsImage" src="${meta._previewUrl || filename}" alt="${sanitize(meta.mainSubject || filename)}"${meta.rotation ? ` style="transform:rotate(${meta.rotation}deg)"` : ''}>
             </div>
 
             <div class="meta-row-tech" role="group" aria-label="Información técnica">
@@ -81,7 +81,7 @@ export default class MetadataPanelRenderer {
                     </div>
                     <div class="form-group-compact full-width">
                         <label class="form-label" for="field-centuries">Siglo (separados por coma)</label>
-                        <input id="field-centuries" type="text" class="form-control form-control-sm" data-field="centuries" value="${(meta.centuries || []).join(', ')}">
+                        <input id="field-centuries" type="text" class="form-control form-control-sm" data-field="centuries" value="${sanitize((meta.centuries || []).join(', '))}">
                     </div>
                     <div class="form-group-compact full-width">
                         <label class="form-label" for="field-location">Ubicación</label>
@@ -93,7 +93,7 @@ export default class MetadataPanelRenderer {
                     </div>
                     <div class="form-group-compact full-width">
                         <label class="form-label" for="field-tags">Etiquetas (separadas por coma)</label>
-                        <input id="field-tags" type="text" class="form-control form-control-sm" data-field="tags" value="${(meta.tags || []).join(', ')}">
+                        <input id="field-tags" type="text" class="form-control form-control-sm" data-field="tags" value="${sanitize((meta.tags || []).join(', '))}">
                     </div>
                     <div class="form-group-compact">
                         <label class="form-label" for="field-lat">Latitud</label>
