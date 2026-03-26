@@ -8,6 +8,9 @@ dist/
 *.log
 npm-debug.log*
 
+# Claude Code (never commit local AI settings)
+.claude/
+
 # IDE/System
 .vscode/
 .idea/
