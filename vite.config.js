@@ -1,6 +1,19 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Plugin que bloquea eval() en el código fuente del proyecto
+function noEvalPlugin() {
+  return {
+    name: 'no-eval',
+    transform(code, id) {
+      if (id.includes('node_modules')) return;
+      if (/\beval\s*\(/.test(code)) {
+        throw new Error(`[no-eval] Uso de eval() detectado en: ${id}`);
+      }
+    }
+  };
+}
+
 export default defineConfig({
   test: {
     environment: 'happy-dom',
@@ -8,6 +21,7 @@ export default defineConfig({
   },
   base: './',
   plugins: [
+    noEvalPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
