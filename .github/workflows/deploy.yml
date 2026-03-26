@@ -32,7 +32,10 @@ jobs:
           cache: 'npm'
 
       - name: Instalar dependencias
-        run: npm install
+        run: npm ci
+
+      - name: Auditar dependencias
+        run: npm audit --audit-level=high
 
       - name: Construir proyecto (Vite)
         run: npm run build
