@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm install:*)",
-      "Bash(node -e \"const p=require\\(''./package.json''\\); p.scripts.test=''vitest run''; p.scripts[''test:watch'']=''vitest''; require\\(''fs''\\).writeFileSync\\(''./package.json'', JSON.stringify\\(p,null,2\\)+''\\\\n''\\)\")"
-    ]
-  }
-}
