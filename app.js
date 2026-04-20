@@ -141,9 +141,11 @@ async function init() {
             mapController.addOrUpdateMarker(filename, meta);
         }
 
-        // Obtener el nombre del campo afectado para optimizar el refresco
+        // Edición in-place desde el panel: no re-renderizamos el panel (destruiría
+        // el DOM y perdería el foco al tabular entre campos). El usuario ya ve el
+        // valor que acaba de escribir; el refresco visual de otras vistas sí sigue.
         const firstField = Object.keys(updates)[0];
-        refreshUI(filename, firstField);
+        refreshUI(filename, firstField, { skipPanelRender: true });
 
         // No mostrar toast en cada pequeña edición de campo para no saturar
         // uiManager.showToast('Cambios guardados', 'success');
@@ -835,9 +837,11 @@ function selectImage(filename) {
     // updateSelection dispara el callback handleSelectionChange internamente
 }
 
-function refreshUI(filename, fieldAffected = null) {
-    // 1. Siempre actualizar el panel de detalles si es la seleccionada, O si estamos en lote
-    if (state.selectedImagesList.includes(filename)) {
+function refreshUI(filename, fieldAffected = null, opts = {}) {
+    // 1. Actualizar el panel de detalles si es la seleccionada, O si estamos en lote.
+    // `skipPanelRender` lo usa el callback de edición in-place para preservar el foco
+    // del input al tabular (el panel se reescribe vía innerHTML y destruiría el DOM activo).
+    if (!opts.skipPanelRender && state.selectedImagesList.includes(filename)) {
         if (state.selectedImagesList.length > 1) {
             uiManager.renderMultiMetadataPanel(state.selectedImagesList);
         } else {
