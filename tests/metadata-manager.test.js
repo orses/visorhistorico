@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock idb-keyval before importing MetadataManager
 vi.mock('idb-keyval', () => ({
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue(undefined),
+    del: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock logger
@@ -204,5 +205,304 @@ describe('MetadataManager.getMetadata (cache)', () => {
         mm.manualEdits['img.jpg'] = { author: 'Override Author' };
         const meta = mm.getMetadata('img.jpg');
         expect(meta.author).toBe('Override Author');
+    });
+});
+
+describe('MetadataManager.resetForNewDirectory', () => {
+    let mm;
+    let revokeSpy;
+
+    beforeEach(() => {
+        mm = new MetadataManager();
+        revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        revokeSpy.mockRestore();
+    });
+
+    it('preserves manualEdits in memory (no data loss)', async () => {
+        mm.manualEdits['foto.jpg'] = { notes: 'importante', _isUserMetadata: true };
+        mm.manualEdits['otra.jpg'] = { author: 'Anon' };
+        await mm.resetForNewDirectory();
+        expect(mm.manualEdits['foto.jpg']).toEqual({ notes: 'importante', _isUserMetadata: true });
+        expect(mm.manualEdits['otra.jpg']).toEqual({ author: 'Anon' });
+    });
+
+    it('does NOT call idb del for manualEdits key', async () => {
+        const { del } = await import('idb-keyval');
+        del.mockClear();
+        await mm.resetForNewDirectory();
+        expect(del).not.toHaveBeenCalled();
+    });
+
+    it('clears volatile metadata cache', async () => {
+        mm.metadata['img.jpg'] = { mainSubject: 'Test', _isCacheValid: true };
+        await mm.resetForNewDirectory();
+        expect(mm.metadata).toEqual({});
+    });
+
+    it('clears userDatabase so it can be reloaded from JSON', async () => {
+        mm.userDatabase['img.jpg'] = { mainSubject: 'Maestro' };
+        await mm.resetForNewDirectory();
+        expect(mm.userDatabase).toEqual({});
+    });
+
+    it('revokes blob URLs to free memory', async () => {
+        mm.metadata['a.jpg'] = { _previewUrl: 'blob:http://localhost/abc' };
+        mm.metadata['b.jpg'] = { _previewUrl: 'blob:http://localhost/def' };
+        mm.metadata['c.jpg'] = { _previewUrl: 'https://cdn/real.jpg' }; // non-blob
+        await mm.resetForNewDirectory();
+        expect(revokeSpy).toHaveBeenCalledTimes(2);
+        expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/abc');
+        expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/def');
+        expect(revokeSpy).not.toHaveBeenCalledWith('https://cdn/real.jpg');
+    });
+
+    it('clears internal caches and rebuilds normalized index', async () => {
+        mm.normalizeKey('Madrid - Sol.jpg');
+        mm.parseFilename('Madrid - Sol - 1900.jpg');
+        expect(mm._normalizeCache.size).toBeGreaterThan(0);
+        expect(mm._parseCache.size).toBeGreaterThan(0);
+
+        mm.userDatabase['Madrid - Sol.jpg'] = { mainSubject: 'Sol' };
+        await mm.resetForNewDirectory();
+        expect(mm._normalizeCache.size).toBe(0);
+        expect(mm._parseCache.size).toBe(0);
+        expect(mm._normalizedIndex.size).toBe(0); // userDatabase was cleared first
+    });
+
+    it('is safe to call repeatedly (idempotent)', async () => {
+        await mm.resetForNewDirectory();
+        await mm.resetForNewDirectory();
+        expect(mm.metadata).toEqual({});
+        expect(mm.userDatabase).toEqual({});
+    });
+});
+
+describe('MetadataManager.purgeManualEdits', () => {
+    let mm;
+    beforeEach(() => { mm = new MetadataManager(); });
+
+    it('empties manualEdits in memory', async () => {
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        mm.manualEdits['b.jpg'] = { author: 'y' };
+        await mm.purgeManualEdits();
+        expect(mm.manualEdits).toEqual({});
+    });
+
+    it('calls idb del with the correct key', async () => {
+        const { del } = await import('idb-keyval');
+        del.mockClear();
+        await mm.purgeManualEdits();
+        expect(del).toHaveBeenCalledWith('coleccion_historia_edits_manuales');
+    });
+
+    it('does not touch userDatabase or metadata cache', async () => {
+        mm.userDatabase['a.jpg'] = { mainSubject: 'Base' };
+        mm.metadata['a.jpg'] = { mainSubject: 'Base', _isCacheValid: true };
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        await mm.purgeManualEdits();
+        expect(mm.userDatabase['a.jpg']).toBeDefined();
+        expect(mm.metadata['a.jpg']).toBeDefined();
+    });
+});
+
+describe('MetadataManager.pruneOrphanEdits', () => {
+    let mm;
+    beforeEach(() => {
+        mm = new MetadataManager();
+        // Silence the debounced save during tests
+        mm.suspendSave();
+    });
+
+    it('returns 0 when all edits match existing files', () => {
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        mm.manualEdits['b.jpg'] = { notes: 'y' };
+        const purged = mm.pruneOrphanEdits(['a.jpg', 'b.jpg', 'extra.jpg']);
+        expect(purged).toBe(0);
+        expect(Object.keys(mm.manualEdits)).toEqual(['a.jpg', 'b.jpg']);
+    });
+
+    it('removes edits not present in scanned filenames', () => {
+        mm.manualEdits['keep.jpg'] = { notes: 'keep' };
+        mm.manualEdits['orphan.jpg'] = { notes: 'gone' };
+        const purged = mm.pruneOrphanEdits(['keep.jpg']);
+        expect(purged).toBe(1);
+        expect(mm.manualEdits['keep.jpg']).toBeDefined();
+        expect(mm.manualEdits['orphan.jpg']).toBeUndefined();
+    });
+
+    it('preserves edits matching by case-insensitive normalization', () => {
+        mm.manualEdits['foto.jpg'] = { notes: 'x' };
+        const purged = mm.pruneOrphanEdits(['Foto.JPG']);
+        expect(purged).toBe(0);
+        expect(mm.manualEdits['foto.jpg']).toBeDefined();
+    });
+
+    it('preserves edits matching by accent-insensitive normalization', () => {
+        mm.manualEdits['Cafe.jpg'] = { notes: 'x' };
+        const purged = mm.pruneOrphanEdits(['Café.jpg']);
+        expect(purged).toBe(0);
+        expect(mm.manualEdits['Cafe.jpg']).toBeDefined();
+    });
+
+    it('preserves edits matching across image extensions', () => {
+        mm.manualEdits['retiro.jpg'] = { notes: 'x' };
+        // normalizeKey strips image extensions, so different exts normalize equal
+        const purged = mm.pruneOrphanEdits(['retiro.tiff']);
+        expect(purged).toBe(0);
+        expect(mm.manualEdits['retiro.jpg']).toBeDefined();
+    });
+
+    it('treats a real rename as two different files (old purged)', () => {
+        mm.manualEdits['Puerta del Sol.jpg'] = { notes: 'old' };
+        const purged = mm.pruneOrphanEdits(['puerta_sol.jpg']);
+        expect(purged).toBe(1);
+        expect(mm.manualEdits['Puerta del Sol.jpg']).toBeUndefined();
+    });
+
+    it('purges all when no files are scanned', () => {
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        mm.manualEdits['b.jpg'] = { notes: 'y' };
+        mm.manualEdits['c.jpg'] = { notes: 'z' };
+        const purged = mm.pruneOrphanEdits([]);
+        expect(purged).toBe(3);
+        expect(mm.manualEdits).toEqual({});
+    });
+
+    it('is a no-op when manualEdits is empty', () => {
+        const purged = mm.pruneOrphanEdits(['a.jpg', 'b.jpg']);
+        expect(purged).toBe(0);
+        expect(mm.manualEdits).toEqual({});
+    });
+
+    it('removes entries whose key normalizes to empty string', () => {
+        mm.manualEdits[''] = { notes: 'bad key' };
+        mm.manualEdits['real.jpg'] = { notes: 'ok' };
+        const purged = mm.pruneOrphanEdits(['real.jpg']);
+        expect(purged).toBe(1);
+        expect(mm.manualEdits['']).toBeUndefined();
+        expect(mm.manualEdits['real.jpg']).toBeDefined();
+    });
+
+    it('ignores falsy entries in existingFilenames', () => {
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        const purged = mm.pruneOrphanEdits(['a.jpg', '', null, undefined]);
+        expect(purged).toBe(0);
+        expect(mm.manualEdits['a.jpg']).toBeDefined();
+    });
+
+    it('triggers a debounced save when entries are purged', async () => {
+        vi.useFakeTimers();
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        // Re-enable saving for this test
+        const mm2 = new MetadataManager();
+        mm2.manualEdits['keep.jpg'] = { notes: 'k' };
+        mm2.manualEdits['orphan.jpg'] = { notes: 'o' };
+
+        mm2.pruneOrphanEdits(['keep.jpg']);
+        // Debounce is 1000ms
+        await vi.advanceTimersByTimeAsync(1100);
+
+        expect(set).toHaveBeenCalledWith(
+            'coleccion_historia_edits_manuales',
+            expect.objectContaining({ 'keep.jpg': { notes: 'k' } })
+        );
+        // Orphan must not be persisted
+        const lastCall = set.mock.calls[set.mock.calls.length - 1];
+        expect(lastCall[1]).not.toHaveProperty('orphan.jpg');
+
+        vi.useRealTimers();
+    });
+
+    it('does NOT trigger a save when no entries are purged', async () => {
+        vi.useFakeTimers();
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        const mm2 = new MetadataManager();
+        mm2.manualEdits['a.jpg'] = { notes: 'x' };
+        mm2.pruneOrphanEdits(['a.jpg']);
+        await vi.advanceTimersByTimeAsync(1100);
+
+        expect(set).not.toHaveBeenCalled();
+        vi.useRealTimers();
+    });
+});
+
+describe('MetadataManager — reload scenario integration', () => {
+    let mm;
+    let revokeSpy;
+
+    beforeEach(() => {
+        mm = new MetadataManager();
+        revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        revokeSpy.mockRestore();
+    });
+
+    it('preserves manual edits across a directory reload cycle', async () => {
+        // 1. User edits metadata
+        mm.manualEdits['foto.jpg'] = { notes: 'nota importante', _isUserMetadata: true };
+
+        // 2. Page reloads → session restored → loadImagesFromDirectory runs reset
+        await mm.resetForNewDirectory();
+
+        // 3. Directory is scanned: foto.jpg is still there
+        mm.pruneOrphanEdits(['foto.jpg']);
+
+        // 4. Fusion still applies the user's edit
+        const meta = mm.getMetadata('foto.jpg');
+        expect(meta.notes).toBe('nota importante');
+        expect(meta._isUserMetadata).toBe(true);
+    });
+
+    it('purges edits of images deleted from disk between reloads', async () => {
+        mm.manualEdits['exists.jpg'] = { notes: 'A' };
+        mm.manualEdits['deleted.jpg'] = { notes: 'B' };
+
+        await mm.resetForNewDirectory();
+        // Only 'exists.jpg' survives the scan
+        const purged = mm.pruneOrphanEdits(['exists.jpg']);
+
+        expect(purged).toBe(1);
+        expect(mm.manualEdits['deleted.jpg']).toBeUndefined();
+        expect(mm.manualEdits['exists.jpg']).toBeDefined();
+    });
+
+    it('detects newly added images as fresh entries (no stale manualEdits)', async () => {
+        mm.manualEdits['old.jpg'] = { notes: 'old edit' };
+        await mm.resetForNewDirectory();
+
+        // Directory now includes a new file
+        mm.pruneOrphanEdits(['old.jpg', 'brand-new.jpg']);
+
+        const fresh = mm.getMetadata('brand-new.jpg');
+        // No manual edits for the new file
+        expect(fresh.notes).toBeUndefined();
+        // _isUserMetadata is only set when there's user data — new file shouldn't have it
+        expect(fresh._isUserMetadata).toBeFalsy();
+        // Old edit still preserved
+        expect(mm.getMetadata('old.jpg').notes).toBe('old edit');
+    });
+
+    it('re-importing a modified master JSON does not overwrite manual edits', async () => {
+        mm.manualEdits['img.jpg'] = { author: 'Manual override' };
+        await mm.resetForNewDirectory();
+
+        mm.importFromJSON(JSON.stringify({
+            'img.jpg': { author: 'From JSON', mainSubject: 'Test' },
+        }));
+
+        const meta = mm.getMetadata('img.jpg');
+        // Manual layer wins over master layer
+        expect(meta.author).toBe('Manual override');
+        // But fields not overridden still come from master
+        expect(meta.mainSubject).toBe('Test');
     });
 });

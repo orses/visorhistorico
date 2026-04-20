@@ -476,26 +476,61 @@ export default class MetadataManager {
     }
 
     /**
-     * Limpia todo el estado para comenzar de cero con un nuevo directorio.
-     * Conserva las ediciones manuales en memoria pero las borra del IDB también.
+     * Limpia estado efímero para cargar un directorio: caché volátil, base maestra
+     * (que se recargará del JSON) y blob URLs. NO toca `manualEdits`: son datos del
+     * usuario y si un filename no existe en el nuevo directorio, la fusión
+     * simplemente no lo aplica. Para borrar ediciones manualmente usar `purgeManualEdits()`.
      */
     async resetForNewDirectory() {
-        // Revocar blob URLs existentes
         for (const key of Object.keys(this.metadata)) {
             const url = this.metadata[key]?._previewUrl;
             if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
         }
         this.metadata = {};
         this.userDatabase = {};
-        this.manualEdits = {};
         this._normalizeCache.clear();
         this._parseCache.clear();
         this.buildNormalizedIndex();
-        // Borrar ediciones manuales persistidas en IDB
+    }
+
+    /**
+     * Purga entradas de `manualEdits` cuyo filename ya no existe en el directorio
+     * escaneado. Compara con `normalizeKey` para tolerar diferencias de mayúsculas
+     * y tildes; un rename con cambios reales de nombre se trata como archivo nuevo.
+     * @param {string[]} existingFilenames - filenames presentes tras el escaneo
+     * @returns {number} entradas purgadas
+     */
+    pruneOrphanEdits(existingFilenames) {
+        const existingNorm = new Set(
+            existingFilenames.map(f => this.normalizeKey(f)).filter(Boolean)
+        );
+        let purged = 0;
+        for (const key of Object.keys(this.manualEdits)) {
+            const norm = this.normalizeKey(key);
+            if (!norm || !existingNorm.has(norm)) {
+                delete this.manualEdits[key];
+                purged++;
+            }
+        }
+        if (purged > 0) {
+            logger.log(`Purgadas ${purged} ediciones huérfanas (archivos borrados o renombrados).`);
+            this.saveToStorage();
+        }
+        return purged;
+    }
+
+    /**
+     * Borra explícitamente todas las ediciones manuales (memoria + IDB).
+     * Acción destructiva: solo usar bajo solicitud explícita del usuario.
+     */
+    async purgeManualEdits() {
+        this.manualEdits = {};
         try {
             const { del } = await import('idb-keyval');
             await del('coleccion_historia_edits_manuales');
-        } catch (_) {}
+        } catch (e) {
+            logger.error('Error al borrar ediciones manuales:', e);
+        }
     }
 
     // Actualizar metadatos: Alimenta la capa de EDICIONES MANUALES

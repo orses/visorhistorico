@@ -750,6 +750,9 @@ async function loadImagesFromDirectory(existingHandle = null) {
         filterManager.setImages(state.currentImages);
         filterManager.renderControllers();
 
+        // Limpieza de ediciones huérfanas: archivos borrados o renombrados en disco
+        metadataManager.pruneOrphanEdits(state.currentImages);
+
         metadataManager.resumeSave(); // Re-enable and save once
 
         // Initialize search worker with current metadata
