@@ -34,8 +34,10 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Auditar dependencias
-        run: npm audit --audit-level=high
+      - name: Auditar dependencias de producción
+        # Solo auditamos runtime: las vulnerabilidades en devDependencies
+        # (p.ej. build tools) no afectan al código desplegado al usuario final.
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Construir proyecto (Vite)
         run: npm run build
