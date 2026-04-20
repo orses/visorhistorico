@@ -241,13 +241,15 @@ function setupGlobalListeners() {
         btn.classList.toggle('active', !isHidden);
     });
 
-    // Limpiar todos los filtros
-    document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+    // Restablecer todos los filtros (botón de toolbar + botón inline en el panel)
+    const clearAllFiltersHandler = () => {
         if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
         document.getElementById('searchInput').value = '';
         document.getElementById('clearSearchBtn').classList.add('hidden');
         filterManager.resetAll();
-    });
+    };
+    document.getElementById('clearFiltersBtn')?.addEventListener('click', clearAllFiltersHandler);
+    document.getElementById('clearFiltersInlineBtn')?.addEventListener('click', clearAllFiltersHandler);
 
     // Toggle panel de metadatos — botón dentro del panel + botón reabrir en el mapa
     const _toggleDetailsPanel = (forceHide) => {
@@ -488,6 +490,11 @@ function setupGlobalListeners() {
         }
     };
 
+    // Safety net: persistir ediciones pendientes antes de cerrar/recargar la pestaña
+    window.addEventListener('pagehide', () => {
+        metadataManager.flushSave();
+    });
+
     // Persistencia de la vista del mapa (debounced, moveend cubre también zoomend)
     let mapViewSaveTimeout = null;
     mapController.map.on('moveend', () => {
@@ -508,11 +515,12 @@ function setupGlobalListeners() {
                 document.getElementById('searchInput').focus();
             }
         }
-        // Ctrl+G: Explorar/Guardar (Exportar JSON)
+        // Ctrl+G: Guardar inmediatamente (flush sin debounce)
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
             e.preventDefault();
-            metadataManager.saveToStorage();
-            uiManager.showToast('Cambios guardados en navegador (Ctrl+G)', 'success');
+            metadataManager.flushSave().then(() => {
+                uiManager.showToast('Cambios guardados en navegador (Ctrl+G)', 'success');
+            });
         }
         // Ctrl+E: Seleccionar todas las imágenes visibles
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {

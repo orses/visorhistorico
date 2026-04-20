@@ -607,26 +607,49 @@ export default class MetadataManager {
         this.saveToStorage();
     }
 
-    // Guardar en IndexedDB con Debounce (Máximo rendimiento al editar)
+    // Prepara el payload limpio que se persiste (sin campos volátiles)
+    _buildPersistPayload() {
+        const cleanManual = {};
+        for (const key in this.manualEdits) {
+            const { _previewUrl, _fileSize, _isCacheValid, ...rest } = this.manualEdits[key];
+            cleanManual[key] = rest;
+        }
+        return cleanManual;
+    }
+
+    // Guardar en IndexedDB con Debounce corto (amortigua ráfagas de edición)
     saveToStorage() {
         if (this.savingSuspended) return;
 
         if (this.saveTimeout) clearTimeout(this.saveTimeout);
 
         this.saveTimeout = setTimeout(async () => {
+            this.saveTimeout = null;
             try {
-                // PERSISTIMOS SOLO LAS EDICIONES MANUALES
-                const cleanManual = {};
-                for (const key in this.manualEdits) {
-                    const { _previewUrl, _fileSize, _isCacheValid, ...rest } = this.manualEdits[key];
-                    cleanManual[key] = rest;
-                }
-                await set('coleccion_historia_edits_manuales', cleanManual);
-                logger.log('Ediciones manuales persistidas en IDB (Debounced).');
+                await set('coleccion_historia_edits_manuales', this._buildPersistPayload());
+                logger.log('Ediciones manuales persistidas en IDB (debounced).');
             } catch (e) {
                 logger.error('Error al guardar ediciones manuales:', e);
             }
-        }, 1000); // 1 segundo de calma antes de escribir en disco
+        }, 300);
+    }
+
+    /**
+     * Persiste YA, sin esperar al debounce. Llamar en Ctrl+G, cierre de modales,
+     * pagehide/beforeunload o cualquier punto donde no se pueda permitir pérdida.
+     */
+    async flushSave() {
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = null;
+        }
+        if (this.savingSuspended) return;
+        try {
+            await set('coleccion_historia_edits_manuales', this._buildPersistPayload());
+            logger.log('Ediciones manuales persistidas en IDB (flush inmediato).');
+        } catch (e) {
+            logger.error('Error al hacer flush save:', e);
+        }
     }
 
     // Guardar la Base de Datos Maestra (Solo se llama cuando cambia de verdad)

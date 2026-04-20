@@ -150,6 +150,8 @@ export default class FilterManager {
         if (btn) btn.classList.toggle('filters-applied', active);
         const clearBtn = document.getElementById('clearFiltersBtn');
         if (clearBtn) clearBtn.classList.toggle('hidden', !active);
+        const clearInline = document.getElementById('clearFiltersInlineBtn');
+        if (clearInline) clearInline.classList.toggle('hidden', !active);
     }
 
     /**

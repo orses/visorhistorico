@@ -404,8 +404,8 @@ describe('MetadataManager.pruneOrphanEdits', () => {
         mm2.manualEdits['orphan.jpg'] = { notes: 'o' };
 
         mm2.pruneOrphanEdits(['keep.jpg']);
-        // Debounce is 1000ms
-        await vi.advanceTimersByTimeAsync(1100);
+        // Debounce is 300ms
+        await vi.advanceTimersByTimeAsync(400);
 
         expect(set).toHaveBeenCalledWith(
             'coleccion_historia_edits_manuales',
@@ -426,10 +426,77 @@ describe('MetadataManager.pruneOrphanEdits', () => {
         const mm2 = new MetadataManager();
         mm2.manualEdits['a.jpg'] = { notes: 'x' };
         mm2.pruneOrphanEdits(['a.jpg']);
-        await vi.advanceTimersByTimeAsync(1100);
+        await vi.advanceTimersByTimeAsync(400);
 
         expect(set).not.toHaveBeenCalled();
         vi.useRealTimers();
+    });
+});
+
+describe('MetadataManager.flushSave', () => {
+    let mm;
+    beforeEach(() => { mm = new MetadataManager(); });
+
+    it('persists manualEdits immediately without waiting for the debounce', async () => {
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        mm.manualEdits['foto.jpg'] = { notes: 'urgent' };
+        await mm.flushSave();
+
+        expect(set).toHaveBeenCalledWith(
+            'coleccion_historia_edits_manuales',
+            { 'foto.jpg': { notes: 'urgent' } }
+        );
+    });
+
+    it('cancels any pending debounced save', async () => {
+        vi.useFakeTimers();
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        mm.saveToStorage();          // arma un timeout de 300ms
+        await mm.flushSave();        // debe cancelarlo y escribir ya
+
+        expect(mm.saveTimeout).toBeNull();
+        expect(set).toHaveBeenCalledTimes(1);
+
+        // Avanzar el tiempo para confirmar que el viejo timeout no dispara otra escritura
+        await vi.advanceTimersByTimeAsync(500);
+        expect(set).toHaveBeenCalledTimes(1);
+
+        vi.useRealTimers();
+    });
+
+    it('strips volatile fields before persisting', async () => {
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        mm.manualEdits['foto.jpg'] = {
+            notes: 'keep',
+            _previewUrl: 'blob:xxx',
+            _fileSize: 1234,
+            _isCacheValid: true,
+        };
+        await mm.flushSave();
+
+        const payload = set.mock.calls[0][1];
+        expect(payload['foto.jpg']).toEqual({ notes: 'keep' });
+        expect(payload['foto.jpg']._previewUrl).toBeUndefined();
+        expect(payload['foto.jpg']._fileSize).toBeUndefined();
+        expect(payload['foto.jpg']._isCacheValid).toBeUndefined();
+    });
+
+    it('is a no-op when saving is suspended', async () => {
+        const { set } = await import('idb-keyval');
+        set.mockClear();
+
+        mm.suspendSave();
+        mm.manualEdits['a.jpg'] = { notes: 'x' };
+        await mm.flushSave();
+
+        expect(set).not.toHaveBeenCalled();
     });
 });
 
