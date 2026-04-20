@@ -244,6 +244,12 @@ body {
     padding: 0.5rem 2.5rem 0.5rem 2.5rem;
     border-radius: 4px;
 }
+/* Ocultar la X nativa de los input[type=search]: usamos nuestro propio botón (#clearSearchBtn) */
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+}
 
 .search-icon {
     position: absolute;
