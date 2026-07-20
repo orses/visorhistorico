@@ -75,9 +75,12 @@ export default class FilterManager {
             if (!this.geographicFilter.matches(filename)) continue;
             if (!this.timelineFilter.matches(filename)) continue;
 
-            // Mapa: requiere coordenadas válidas (ignora positioningFilter)
+            // Mapa: requiere ambas coordenadas (ignora positioningFilter).
+            // MapController realiza después la validación numérica y de rango.
             const meta = this.metadataManager.getMetadata(filename);
-            if (meta.coordinates && meta.coordinates.lat && meta._userCoords === true) {
+            if (meta.coordinates?.lat != null
+                && meta.coordinates?.lng != null
+                && meta._userCoords === true) {
                 mapFiltered.push(filename);
             }
 

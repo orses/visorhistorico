@@ -259,15 +259,44 @@ export default class MapController {
         });
     }
 
+    // Comprueba que las coordenadas sean numéricas, finitas y estén dentro de rango.
+    hasValidCoordinates(coordinates) {
+        if (!coordinates) return false;
+        const { lat, lng } = coordinates;
+        return typeof lat === 'number'
+            && typeof lng === 'number'
+            && Number.isFinite(lat)
+            && Number.isFinite(lng)
+            && lat >= -90
+            && lat <= 90
+            && lng >= -180
+            && lng <= 180;
+    }
+
+    // Genera una firma de los datos que intervienen en la representación del marcador.
+    _getMarkerSignature(metadata) {
+        return JSON.stringify({
+            mainSubject: metadata.mainSubject || '',
+            previewUrl: metadata._previewUrl || '',
+            conservationStatus: metadata.conservationStatus || '',
+            dateStart: metadata.dateRange?.start ?? null,
+            dateEnd: metadata.dateRange?.end ?? null,
+            centuries: metadata.centuries || [],
+            location: metadata.location || '',
+            author: metadata.author || ''
+        });
+    }
+
     // Añadir marcador
     addMarker(filename, metadata) {
         if (!metadata.coordinates) return null;
 
         const { lat, lng } = metadata.coordinates;
 
-        // Validar que lat y lng sean números válidos
-        if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
-            // console.warn(`Coordenadas inválidas para ${filename}:`, {lat, lng});
+        // Un marcador con coordenadas no válidas puede dejar la agrupación en un
+        // estado incoherente y provocar errores internos en DistanceGrid.
+        if (!this.hasValidCoordinates(metadata.coordinates)) {
+            logger.warn(`Coordenadas inválidas para ${filename}:`, { lat, lng });
             return null;
         }
 
@@ -328,7 +357,14 @@ export default class MapController {
             }
         });
 
-        marker.addTo(this.markerLayer);
+        try {
+            marker.addTo(this.markerLayer);
+        } catch (err) {
+            // Si la agrupación falla, se omite el marcador sin interrumpir el resto.
+            logger.error(`Error añadiendo marcador para ${filename}:`, err);
+            return null;
+        }
+        marker._metadataSignature = this._getMarkerSignature(metadata);
         this.markers[filename] = marker;
 
         return marker;
@@ -435,18 +471,21 @@ export default class MapController {
             }
         });
 
-        // 2. Añadir o actualizar los que sí están
+        // 2. Añadir los nuevos. Los existentes solo se vuelven a crear cuando
+        //    cambian sus coordenadas o los datos que se muestran en el marcador.
         Object.entries(metadataCollection).forEach(([filename, metadata]) => {
-            if (metadata.coordinates) {
-                const marker = this.markers[filename];
-                if (!marker) {
-                    // No existía: añadir
-                    this.addMarker(filename, metadata);
-                } else {
-                    // Ya existía: actualizar posición si ha cambiado (opcional, pero addOrUpdate ya lo hace)
-                    // Por simplicidad y robustez, usamos addOrUpdateMarker que gestiona el reemplazo
-                    this.addOrUpdateMarker(filename, metadata);
-                }
+            if (!metadata.coordinates) return;
+            const marker = this.markers[filename];
+            if (!marker) {
+                this.addMarker(filename, metadata);
+                return;
+            }
+            const current = marker.getLatLng();
+            const { lat, lng } = metadata.coordinates;
+            const coordinatesChanged = current.lat !== lat || current.lng !== lng;
+            const metadataChanged = marker._metadataSignature !== this._getMarkerSignature(metadata);
+            if (coordinatesChanged || metadataChanged) {
+                this.addOrUpdateMarker(filename, metadata);
             }
         });
     }
@@ -493,23 +532,31 @@ export default class MapController {
         }
     }
 
-    // Centrar en marcador sin cambiar el zoom
+    // Centrar en marcador sin cambiar el zoom. Devuelve true si existía el marcador.
     focusMarker(filename) {
         this.bringToFront(filename);
         const marker = this.markers[filename];
-        if (marker) {
-            // Si usamos Marker Cluster, debemos asegurar que el marcador sea visible
-            if (this.markerLayer && typeof this.markerLayer.zoomToShowLayer === 'function') {
-                this.markerLayer.zoomToShowLayer(marker, () => {
-                    // Una vez visible tras la animación del cluster, abrir popup
-                    setTimeout(() => marker.openPopup(), 100);
-                });
-            } else {
-                // Comportamiento estándar sin clusters
-                this.map.panTo(marker.getLatLng());
-                setTimeout(() => marker.openPopup(), 150);
-            }
+        if (!marker) return false;
+
+        if (this.markerLayer && typeof this.markerLayer.zoomToShowLayer === 'function') {
+            this.markerLayer.zoomToShowLayer(marker, () => {
+                setTimeout(() => marker.openPopup(), 100);
+            });
+        } else {
+            this.map.panTo(marker.getLatLng());
+            setTimeout(() => marker.openPopup(), 150);
         }
+        return true;
+    }
+
+    // Centra el mapa en unas coordenadas cuando no hay un marcador visible.
+    panToCoordinates(lat, lng) {
+        if (!this.hasValidCoordinates({ lat, lng })) {
+            return false;
+        }
+        const targetZoom = Math.max(this.map.getZoom(), 16);
+        this.map.setView([lat, lng], targetZoom);
+        return true;
     }
 
     // Ajustar vista a todos los marcadores

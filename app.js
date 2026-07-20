@@ -77,8 +77,8 @@ async function init() {
         const visibleMeta = {};
         mapFiles.forEach(f => {
             const m = metadataManager.getMetadata(f);
-            // Harden check: Ensure lat/lng are valid numbers and coordinates are user-placed
-            if (m.coordinates && typeof m.coordinates.lat === 'number' && typeof m.coordinates.lng === 'number' && m._userCoords === true) {
+            // Solo se muestran coordenadas válidas y fijadas por el usuario.
+            if (mapController.hasValidCoordinates(m.coordinates) && m._userCoords === true) {
                 visibleMeta[f] = m;
             }
         });
@@ -768,17 +768,12 @@ async function loadImagesFromDirectory(existingHandle = null) {
         // Initialize search worker with current metadata
         searchWorkerClient.init(metadataManager.getAllMetadata());
 
+        // applyFilters activa onFilterUpdate, que llama a updateMarkers con el
+        // subconjunto que debe verse en el mapa, respetando los filtros y
+        // _userCoords. Una segunda llamada representaría primero todas las
+        // coordenadas y después las filtradas, lo que añadiría operaciones
+        // innecesarias y podría provocar errores internos en DistanceGrid.
         filterManager.applyFilters();
-
-        // Actualizar marcadores del mapa con todas las imágenes que tienen coordenadas
-        const metadataWithCoords = {};
-        state.currentImages.forEach(filename => {
-            const meta = metadataManager.getMetadata(filename);
-            if (meta.coordinates && meta.coordinates.lat != null && meta.coordinates.lng != null) {
-                metadataWithCoords[filename] = meta;
-            }
-        });
-        mapController.updateMarkers(metadataWithCoords);
 
         uiManager.showToast(`Escaneados ${state.allScannedFiles.length} archivos | ${state.currentImages.length} catalogados`, 'success');
 
@@ -817,11 +812,24 @@ function handleSelectionChange(primaryFile, allSelected) {
     if (state.selectedImagesList.length === 1) {
         uiManager.renderMetadataPanel(state.primarySelectedImage);
 
-        // Mapa Focus
+        // Centrar el mapa en la imagen seleccionada.
         const meta = metadataManager.getMetadata(state.primarySelectedImage);
-        const hasCoords = meta.coordinates && typeof meta.coordinates.lat === 'number';
+        const hasCoords = mapController.hasValidCoordinates(meta.coordinates);
         if (hasCoords) {
-            mapController.focusMarker(state.primarySelectedImage);
+            const focused = mapController.focusMarker(state.primarySelectedImage);
+            if (!focused) {
+                // El marcador está oculto por los filtros activos (o las coordenadas
+                // son inferidas y no cumplen _userCoords). Centramos el mapa en la
+                // ubicación para que el usuario sepa dónde está la imagen.
+                mapController.panToCoordinates(meta.coordinates.lat, meta.coordinates.lng);
+                const inferred = meta._userCoords !== true;
+                uiManager.showToast(
+                    inferred
+                        ? 'Ubicación inferida (no fijada manualmente). Centrando el mapa.'
+                        : 'El marcador está oculto por los filtros activos. Centrando el mapa en su ubicación.',
+                    'normal'
+                );
+            }
         } else {
             uiManager.showToast('Imagen sin ubicación. Ctrl + Clic en el mapa para situarla', 'normal');
         }
