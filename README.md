@@ -50,6 +50,22 @@ Este proyecto utiliza el empaquetador moderno **Vite**.
    npm run build
    ```
 
+### Mantenimiento de las dependencias
+
+La configuración de `overrides` en `package.json` exige `serialize-javascript`
+7.1.4 o posterior dentro de la versión principal 7. También fuerza `glob` 14.0.6
+o posterior dentro de la versión principal 14 exclusivamente para `workbox-build`,
+cuya versión 7.4.1 todavía declara `glob` 11. Esta sustitución incorpora las
+correcciones de `glob` y su dependencia `minimatch`. Debe revisarse cuando Workbox
+adopte estas correcciones de forma nativa.
+
+Para `ajv` se exige `fast-uri` 3.1.9 o posterior dentro de la versión principal 3,
+con el fin de impedir que se resuelvan versiones anteriores vulnerables.
+
+Al actualizar estas dependencias, hay que ejecutar `npm test`, `npm run build`
+y `npm audit`, y comprobar que el trabajador de servicio generado conserve
+el manifiesto de recursos para el funcionamiento sin conexión.
+
 ## 📖 Manual de Usuario Rápido
 
 1. **Carga de Datos**: Haz clic en el botón «Cargar Directorio» y selecciona tu carpeta de imágenes.
